@@ -1,0 +1,145 @@
+BEGIN TRANSACTION;
+INSERT INTO ActiveModules VALUES('php_bz2.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_gd2.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_mbstring.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_mysql.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_mysqli.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_pdo_mysql.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_pdo_sqlite.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_sqlite.dll','PHP');
+INSERT INTO ActiveModules VALUES('php_sqlite3.dll','PHP');
+
+INSERT INTO PHPModules VALUES('php_mysql.dll','mysql.allow_persistent = On
+
+mysql.max_persistent = -1
+
+mysql.max_links = -1
+
+mysql.default_port =
+
+mysql.default_socket =
+
+mysql.default_host =
+
+mysql.default_user =
+
+mysql.default_password =
+
+mysql.connect_timeout = 60
+
+mysql.trace_mode = Off');
+INSERT INTO PHPModules VALUES('php_mbstring.dll',';mbstring.language = Japanese
+
+;mbstring.internal_encoding = EUC-JP
+
+;mbstring.http_input = auto
+
+;mbstring.http_output = SJIS
+
+;mbstring.encoding_translation = Off
+
+;mbstring.detect_order = auto
+
+;mbstring.substitute_character = none
+
+;mbstring.func_overload = 0
+
+;mbstring.strict_detection = Off');
+
+DELETE FROM PHPSettings;
+INSERT INTO PHPSettings VALUES(1,'engine','On');
+INSERT INTO PHPSettings VALUES(1,'zend.ze1_compatibility_mode','Off');
+INSERT INTO PHPSettings VALUES(1,'short_open_tag','On');
+INSERT INTO PHPSettings VALUES(1,'asp_tags','Off');
+INSERT INTO PHPSettings VALUES(1,'precision',' 14');
+INSERT INTO PHPSettings VALUES(1,'y2k_compliance','On');
+INSERT INTO PHPSettings VALUES(1,'output_buffering',4096);
+INSERT INTO PHPSettings VALUES(0,'output_handler','');
+INSERT INTO PHPSettings VALUES(1,'zlib.output_compression','Off');
+INSERT INTO PHPSettings VALUES(1,'zlib.output_compression_level',-1);
+INSERT INTO PHPSettings VALUES(0,'zlib.output_handler','');
+INSERT INTO PHPSettings VALUES(1,'implicit_flush','Off');
+INSERT INTO PHPSettings VALUES(1,'unserialize_callback_func','');
+INSERT INTO PHPSettings VALUES(1,'serialize_precision',100);
+INSERT INTO PHPSettings VALUES(1,'allow_call_time_pass_reference','Off');
+INSERT INTO PHPSettings VALUES(1,'safe_mode','Off');
+INSERT INTO PHPSettings VALUES(1,'safe_mode_gid','Off');
+INSERT INTO PHPSettings VALUES(1,'safe_mode_include_dir','');
+INSERT INTO PHPSettings VALUES(1,'safe_mode_exec_dir','');
+INSERT INTO PHPSettings VALUES(1,'safe_mode_allowed_env_vars','PHP_');
+INSERT INTO PHPSettings VALUES(1,'safe_mode_protected_env_vars','LD_LIBRARY_PATH');
+INSERT INTO PHPSettings VALUES(0,'open_basedir','');
+INSERT INTO PHPSettings VALUES(1,'disable_functions','');
+INSERT INTO PHPSettings VALUES(1,'disable_classes','');
+INSERT INTO PHPSettings VALUES(0,'highlight.string','#DD0000');
+INSERT INTO PHPSettings VALUES(0,'highlight.comment','#FF9900');
+INSERT INTO PHPSettings VALUES(0,'highlight.keyword','#007700');
+INSERT INTO PHPSettings VALUES(0,'highlight.bg','#FFFFFF');
+INSERT INTO PHPSettings VALUES(0,'highlight.default','#0000BB');
+INSERT INTO PHPSettings VALUES(0,'highlight.html','#000000');
+INSERT INTO PHPSettings VALUES(0,'ignore_user_abort','On');
+INSERT INTO PHPSettings VALUES(0,'realpath_cache_size','16k');
+INSERT INTO PHPSettings VALUES(0,'realpath_cache_ttl',120);
+INSERT INTO PHPSettings VALUES(1,'expose_php','On');
+INSERT INTO PHPSettings VALUES(1,'max_execution_time',30);
+INSERT INTO PHPSettings VALUES(1,'max_input_time',60);
+INSERT INTO PHPSettings VALUES(0,'max_input_nesting_level',64);
+INSERT INTO PHPSettings VALUES(1,'memory_limit','128M');
+INSERT INTO PHPSettings VALUES(1,'display_errors','Off');
+INSERT INTO PHPSettings VALUES(1,'display_startup_errors','Off');
+INSERT INTO PHPSettings VALUES(1,'log_errors','On');
+INSERT INTO PHPSettings VALUES(1,'log_errors_max_len',1024);
+INSERT INTO PHPSettings VALUES(1,'ignore_repeated_errors','Off');
+INSERT INTO PHPSettings VALUES(1,'ignore_repeated_source','Off');
+INSERT INTO PHPSettings VALUES(1,'report_memleaks','On');
+INSERT INTO PHPSettings VALUES(0,'report_zend_debug',0);
+INSERT INTO PHPSettings VALUES(1,'track_errors','Off');
+INSERT INTO PHPSettings VALUES(0,'xmlrpc_errors',0);
+INSERT INTO PHPSettings VALUES(0,'xmlrpc_error_number',0);
+INSERT INTO PHPSettings VALUES(0,'html_errors','Off');
+INSERT INTO PHPSettings VALUES(0,'docref_root','"/phpmanual/"');
+INSERT INTO PHPSettings VALUES(0,'docref_ext','.html');
+INSERT INTO PHPSettings VALUES(0,'error_prepend_string','"<font color=#ff0000>"');
+INSERT INTO PHPSettings VALUES(0,'error_append_string','"</font>"');
+INSERT INTO PHPSettings VALUES(0,'error_log','filename');
+INSERT INTO PHPSettings VALUES(0,'error_log','syslog');
+INSERT INTO PHPSettings VALUES(0,'arg_separator.output','"&amp;"');
+INSERT INTO PHPSettings VALUES(0,'arg_separator.input','";&"');
+INSERT INTO PHPSettings VALUES(1,'variables_order','"GPCS"');
+INSERT INTO PHPSettings VALUES(1,'register_globals','Off');
+INSERT INTO PHPSettings VALUES(1,'register_long_arrays','Off');
+INSERT INTO PHPSettings VALUES(1,'register_argc_argv','Off');
+INSERT INTO PHPSettings VALUES(1,'auto_globals_jit','On');
+INSERT INTO PHPSettings VALUES(1,'post_max_size','8M');
+INSERT INTO PHPSettings VALUES(1,'magic_quotes_gpc','Off');
+INSERT INTO PHPSettings VALUES(1,'magic_quotes_runtime','Off');
+INSERT INTO PHPSettings VALUES(1,'magic_quotes_sybase','Off');
+INSERT INTO PHPSettings VALUES(1,'auto_prepend_file','');
+INSERT INTO PHPSettings VALUES(1,'auto_append_file','');
+INSERT INTO PHPSettings VALUES(1,'default_mimetype','"text/html"');
+INSERT INTO PHPSettings VALUES(0,'default_charset','"iso-8859-1"');
+INSERT INTO PHPSettings VALUES(0,'always_populate_raw_post_data','On');
+INSERT INTO PHPSettings VALUES(0,'include_path','".;c:\php\includes"');
+INSERT INTO PHPSettings VALUES(1,'doc_root','');
+INSERT INTO PHPSettings VALUES(1,'user_dir','');
+INSERT INTO PHPSettings VALUES(1,'extension_dir','"./"');
+INSERT INTO PHPSettings VALUES(1,'enable_dl','On');
+INSERT INTO PHPSettings VALUES(0,'cgi.force_redirect',1);
+INSERT INTO PHPSettings VALUES(0,'cgi.nph',1);
+INSERT INTO PHPSettings VALUES(0,'cgi.redirect_status_env','');
+INSERT INTO PHPSettings VALUES(0,'cgi.fix_pathinfo',1);
+INSERT INTO PHPSettings VALUES(0,'fastcgi.impersonate',1);
+INSERT INTO PHPSettings VALUES(0,'fastcgi.logging',0);
+INSERT INTO PHPSettings VALUES(0,'cgi.rfc2616_headers',0);
+INSERT INTO PHPSettings VALUES(1,'file_uploads','On');
+INSERT INTO PHPSettings VALUES(0,'upload_tmp_dir','');
+INSERT INTO PHPSettings VALUES(1,'upload_max_filesize','2M');
+INSERT INTO PHPSettings VALUES(1,'max_file_uploads',20);
+INSERT INTO PHPSettings VALUES(1,'allow_url_fopen','On');
+INSERT INTO PHPSettings VALUES(1,'allow_url_include','Off');
+INSERT INTO PHPSettings VALUES(0,'from','"john@doe.com"');
+INSERT INTO PHPSettings VALUES(0,'user_agent','"PHP"');
+INSERT INTO PHPSettings VALUES(1,'default_socket_timeout',60);
+INSERT INTO PHPSettings VALUES(0,'auto_detect_line_endings','Off');
+INSERT INTO PHPSettings VALUES(1,'date.timezone','Europe/Madrid');
+COMMIT;

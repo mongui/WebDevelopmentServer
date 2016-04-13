@@ -1,0 +1,24 @@
+Component versions compatibility:
+
+phpMyAdmin		PHP		MySQL/MariaDB
+-----------------------------------------------------
+4.2.x			>= 5.3		>= 5.5
+4.1.x			>= 5.3		>= 5.5
+4.0.10.x		<= 5.2		>= 5
+
+2.11.x			>= 4.3		>= 3.23.32
+
+Necessary runtime libraries (VC9, VC11 & VC14):
+More recent versions of PHP are built with VC9, VC11 or VC14 (Visual Studio 2008, 2012 or 2015 compiler respectively) and include improvements in performance and stability.
+
+VC9 builds:
+x86: http://www.microsoft.com/en-us/download/details.aspx?id=5582
+x64: http://www.microsoft.com/en-us/download/details.aspx?id=15336
+
+VC11 builds:
+x86 & x64: http://www.microsoft.com/en-us/download/details.aspx?id=30679
+
+VC14 builds:
+x86 & x64: https://www.microsoft.com/en-us/download/details.aspx?id=48145
+
+

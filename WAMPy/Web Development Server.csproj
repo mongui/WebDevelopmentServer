@@ -1,0 +1,292 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{945F2486-7E93-49EE-B92D-9B394F15664D}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>WDS</RootNamespace>
+    <AssemblyName>Web Development Server</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <TargetFrameworkProfile />
+    <PublishUrl>C:\Users\mongui\Desktop\WDS\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <PublishWizardCompleted>true</PublishWizardCompleted>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>
+    </StartupObject>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Server.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>31C3D145ADB463D1B876712F897298FA27BE1CF2</ManifestCertificateThumbprint>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestKeyFile>Web Development Server_TemporaryKey.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <GenerateManifests>true</GenerateManifests>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignManifests>true</SignManifests>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Ionic.Zip">
+      <HintPath>..\..\..\..\..\Desktop\WAMPy\Ionic.Zip.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.SQLite">
+      <HintPath>..\packages\System.Data.SQLite.1.0.90.0\lib\net20\System.Data.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SQLite.Linq">
+      <HintPath>..\packages\System.Data.SQLite.1.0.90.0\lib\net20\System.Data.SQLite.Linq.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="wix">
+      <HintPath>..\..\..\..\..\Desktop\WAMPy\lessmsi\wix.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Helpers\Config.cs" />
+    <Compile Include="Helpers\Decompress.cs" />
+    <Compile Include="Helpers\DataBaseFiles.cs" />
+    <Compile Include="Helpers\Services.cs" />
+    <Compile Include="PreferencesWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PreferencesWindow.Designer.cs">
+      <DependentUpon>PreferencesWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\Locale.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Locale.resx</DependentUpon>
+    </Compile>
+    <Compile Include="ServersConfig\CommonServerConfig.cs" />
+    <Compile Include="ServersConfig\DataBaseConfig.cs" />
+    <Compile Include="ServersConfig\DatabaseConfigWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ServersConfig\DatabaseConfigWindow.Designer.cs">
+      <DependentUpon>DatabaseConfigWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ServersConfig\PHPConfig.cs" />
+    <Compile Include="ServersConfig\PHPConfigWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ServersConfig\PHPConfigWindow.Designer.cs">
+      <DependentUpon>PHPConfigWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Helpers\Is64Bit.cs" />
+    <Compile Include="PackagesDownloader\DownloaderWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PackagesDownloader\DownloaderWindow.Designer.cs">
+      <DependentUpon>DownloaderWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ServersConfig\ServerConfigFiles\ApacheConfigFile.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="ServersConfig\ServerConfigFiles\lighttpdConfigFile.cs" />
+    <Compile Include="ServersConfig\ServerConfigFiles\MySQLConfigFile.cs" />
+    <Compile Include="ServersConfig\ServerConfigFiles\nginxConfigFile.cs" />
+    <Compile Include="ServersConfig\ServerConfigFiles\nodeJSConfigFile.cs" />
+    <Compile Include="ServersConfig\ServerConfigFiles\PHPConfigFile.cs" />
+    <Compile Include="ServersConfig\WebServerConfigWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ServersConfig\WebServerConfigWindow.Designer.cs">
+      <DependentUpon>WebServerConfigWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ServersConfig\WebServerConfig.cs" />
+    <Compile Include="Helpers\SQLiteDatabase.cs" />
+    <Compile Include="ServersConfig\Parameters.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ServersConfig\Parameters.Designer.cs">
+      <DependentUpon>Parameters.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Main.Designer.cs">
+      <DependentUpon>Main.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PackagesDownloader\ComponentDownloader.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PackagesDownloader\ComponentDownloader.Designer.cs">
+      <DependentUpon>ComponentDownloader.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RunServers.cs" />
+    <Compile Include="ServersConfig\ServerType.cs" />
+    <Compile Include="Helpers\HorizRule\HorizRule.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Helpers\HorizRule\RuleControBase.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Helpers\HorizRule\Win32.cs" />
+    <Compile Include="Wizard\WizardWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Wizard\WizardWindow.Designer.cs">
+      <DependentUpon>WizardWindow.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="PackagesDownloader\DownloaderWindow.resx">
+      <DependentUpon>DownloaderWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PreferencesWindow.resx">
+      <DependentUpon>PreferencesWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Locale.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Locale.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ServersConfig\DatabaseConfigWindow.resx">
+      <DependentUpon>DatabaseConfigWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ServersConfig\PHPConfigWindow.resx">
+      <DependentUpon>PHPConfigWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ServersConfig\WebServerConfigWindow.resx">
+      <DependentUpon>WebServerConfigWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ServersConfig\Parameters.resx">
+      <DependentUpon>Parameters.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Main.resx">
+      <DependentUpon>Main.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PackagesDownloader\ComponentDownloader.resx">
+      <DependentUpon>ComponentDownloader.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Wizard\WizardWindow.resx">
+      <DependentUpon>WizardWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <None Include="WAMPy_ClaveTemporal.pfx" />
+    <None Include="Web Development Server_TemporaryKey.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\plusB12.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icon1.ico" />
+    <None Include="Resources\Server.ico" />
+    <None Include="Resources\ServerGreen.ico" />
+    <None Include="Resources\ServerRed.ico" />
+    <None Include="Resources\folder.png" />
+    <None Include="Resources\wand.png" />
+    <None Include="Resources\Server.png" />
+    <None Include="Resources\downArrow.png" />
+    <None Include="Resources\downArrow.gif" />
+    <Content Include="Server.ico" />
+    <Content Include="x64\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="x86\SQLite.Interop.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\web_server.png" />
+    <None Include="Resources\red.png" />
+    <None Include="Resources\orange.png" />
+    <None Include="Resources\grey.png" />
+    <None Include="Resources\green.png" />
+    <None Include="Resources\blue.png" />
+    <None Include="Resources\Config.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

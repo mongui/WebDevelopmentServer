@@ -1,0 +1,52 @@
+INSERT INTO ActiveModules VALUES('mod_alias.dll','lighttpd');
+INSERT INTO ActiveModules VALUES('mod_cgi.dll','lighttpd');
+INSERT INTO ActiveModules VALUES('mod_fastcgi.dll','lighttpd');
+INSERT INTO ActiveModules VALUES('mod_simple_vhost.dll','lighttpd');
+INSERT INTO ActiveModules VALUES('mod_ssi.dll','lighttpd');
+INSERT INTO ActiveModules VALUES('mod_alias.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_asis.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_autoindex.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_cache.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_dir.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_env.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_file_cache.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_headers.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_include.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_isapi.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_log_config.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_mime.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_negotiation.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_rewrite.so','Apache');
+INSERT INTO ActiveModules VALUES('mod_setenvif.so','Apache');
+
+INSERT INTO ConfigModules VALUES('Apache','<IfModule !mpm_winnt_module>
+    #User daemon
+    #Group daemon
+</IfModule>',2,'mod_mpm_netware.so');
+INSERT INTO ConfigModules VALUES('Apache','SSLRandomSeed startup builtin
+SSLRandomSeed connect builtin',1,'mod_ssl.so');
+INSERT INTO ConfigModules VALUES('Apache','TypesConfig "conf/original/mime.types"
+
+AddType application/x-compress .Z
+AddType application/x-gzip .gz .tgz
+AddType application/x-httpd-php .php
+AddType application/x-httpd-php .php5
+AddType application/x-httpd-php-source .phps',1,'mod_mime.so');
+INSERT INTO ConfigModules VALUES('Apache','LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+
+<IfModule logio_module>
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+</IfModule>
+
+CustomLog "logs\access_log" common',1,'mod_log_config.so');
+INSERT INTO ConfigModules VALUES('Apache','DirectoryIndex index.html index.php index.php5 index.php6',1,'mod_dir.so');
+INSERT INTO ConfigModules VALUES('Apache','Include conf/original/extra/httpd-autoindex.conf.in',0,'mod_autoindex.so');
+
+INSERT INTO CustomSettings VALUES('Apache',3,'ErrorLog "logs\error_log"');
+INSERT INTO CustomSettings VALUES('Apache',4,'AccessFileName .htaccess
+<FilesMatch "^\.ht">
+    Order allow,deny
+    Deny from all
+    Satisfy All
+</FilesMatch>');
