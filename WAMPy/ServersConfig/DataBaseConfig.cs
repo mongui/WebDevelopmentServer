@@ -5,13 +5,9 @@ namespace WDS
 {
     class DataBaseConfig
     {
-        //public void LoadSettings()
-        //{
-        //}
-
         public Boolean CheckRegex(String pass)
         {
-            Match password = Regex.Match(pass, @"
+            Match password = Regex.Match(pass ?? "", @"
                                     ^             # Match the start of the string
                                     (?=.*\p{Lu})  # Positive lookahead assertion, is true when there is an uppercase letter
                                     (?=.*\p{Ll})  # Positive lookahead assertion, is true when there is an lowercase letter
@@ -23,17 +19,15 @@ namespace WDS
             return password.Success;
         }
 
-        public void ClearConfig()
-        {
-            // Not needed right now.
-        }
-
+        /// <summary>
+        /// Stores a new root password. It is applied the next time the database server starts.
+        /// </summary>
         public void SetDefaultConfig(String Password)
         {
-            ClearConfig();
-
-            Globals.DataBasePassChange = true;
+            Globals.DataBasePass = Password;
+            Globals.DataBasePassPending = "1";
             Config.SaveSetting("DataBasePass", Password);
+            Config.SaveSetting("DataBasePassPending", "1");
         }
     }
 }

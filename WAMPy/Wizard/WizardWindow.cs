@@ -248,7 +248,7 @@ namespace WDS
             {
                 foreach (DataRow Row in Comp.SvrList.Rows)
                 {
-                    if (Row["FullName"].ToString().CompareTo(Input.SelectedItem.ToString()) == 0)
+                    if (Input.SelectedItem != null && Row["FullName"].ToString() == Input.SelectedItem.ToString())
                     {
                         ServerId = Convert.ToInt32(Row["Id"]);
                         break;
@@ -274,7 +274,7 @@ namespace WDS
                         }
                         catch(Exception ex)
                         {
-                            Globals.Error.Show(ex.Message);
+                            Globals.Error.Show("Unexpected error", ex);
                         }
                     }
 
@@ -447,11 +447,11 @@ namespace WDS
 
         private String GetURLfromFile(String FileName, DataTable Table)
         {
-            if (Table.Rows.Count > 0)
+            if (Table != null && Table.Rows.Count > 0)
             {
                 foreach (DataRow Row in Table.Rows)
                 {
-                    if (Row["URL"].ToString().Contains(FileName))
+                    if (CompWS.CleanURL(Row["URL"].ToString()) == FileName)
                     {
                         return Row["URL"].ToString();
                     }
@@ -486,12 +486,32 @@ namespace WDS
             this.p7label4.Text = "Downloading " + ListOfDownloads[0].URL + "...";
             this.ProgressbarGlobal.Value = Convert.ToInt32((Step-1)*100/Steps);
 
-            String[] DownloadFile = { GetURLfromFile(ListOfDownloads[0].URL, ListOfDownloads[0].URLlist) };
-            DownloaderWindow Down = new DownloaderWindow(DownloadFile, ListOfDownloads[0].Target);
-            Down.client.DownloadFileCompleted += new System.ComponentModel.AsyncCompletedEventHandler(DownloadFileCompleted);
-            Down.client.DownloadProgressChanged += new System.Net.DownloadProgressChangedEventHandler(DownloadProgressChanged);
+            String url = GetURLfromFile(ListOfDownloads[0].URL, ListOfDownloads[0].URLlist);
+            if (url == null)
+            {
+                FailedDownloads.Add(ListOfDownloads[0].URL);
+                DownloadDone();
+                return;
+            }
+
+            DownloaderWindow Down = new DownloaderWindow(new String[] { url }, ListOfDownloads[0].Target);
+            Down.AllCompleted += (s, e) =>
+            {
+                if (Down.Failed > 0)
+                {
+                    FailedDownloads.Add(ListOfDownloads[0].URL);
+                }
+                Down.Dispose();
+                DownloadDone();
+            };
+            Down.Progress += (s, percent) =>
+            {
+                this.ProgressbarStep.Value = Math.Max(0, Math.Min(100, percent));
+            };
             Down.StartDownload();
         }
+
+        private List<String> FailedDownloads = new List<String>();
 
         class DownloadList
         {
@@ -500,7 +520,7 @@ namespace WDS
             public String Target = "";
         }
 
-        void DownloadFileCompleted(object sender, System.ComponentModel.AsyncCompletedEventArgs e)
+        private void DownloadDone()
         {
             ListOfDownloads.RemoveAt(0);
             if (ListOfDownloads.Count > 0)
@@ -511,11 +531,6 @@ namespace WDS
             {
                 StartConfiguringServers();
             }
-        }
-
-        private void DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
-        {
-            this.ProgressbarStep.Value = e.ProgressPercentage;
         }
 
         private void StartConfiguringServers()
@@ -551,6 +566,13 @@ namespace WDS
                 this.p7label4.Text = "Configuring Database...";
                 DataBaseConfig DBConfig = new DataBaseConfig();
                 DBConfig.SetDefaultConfig(this.DBPasswd.Text);
+            }
+
+            if (FailedDownloads.Count > 0)
+            {
+                Globals.Error.Show("These packages could not be downloaded or extracted:\r\n\r\n" +
+                    String.Join("\r\n", FailedDownloads.ToArray()) +
+                    "\r\n\r\nYou can install them later from the main window.");
             }
 
             this.Tab++;

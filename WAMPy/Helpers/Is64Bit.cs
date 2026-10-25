@@ -7,18 +7,17 @@ namespace Is64Bit
     {
         public static MachineType GetDllMachineType(string filePath)
         {
-            FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            BinaryReader br = new BinaryReader(fs);
-            fs.Seek(0x3c, SeekOrigin.Begin);
-            Int32 peOffset = br.ReadInt32();
-            fs.Seek(peOffset, SeekOrigin.Begin);
-            UInt32 peHead = br.ReadUInt32();
-            if(peHead!=0x00004550)
-                throw new Exception("Can't find PE header");
-            MachineType machineType = (MachineType) br.ReadUInt16();
-            br.Close();
-            fs.Close();
-            return machineType;
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                fs.Seek(0x3c, SeekOrigin.Begin);
+                Int32 peOffset = br.ReadInt32();
+                fs.Seek(peOffset, SeekOrigin.Begin);
+                UInt32 peHead = br.ReadUInt32();
+                if (peHead != 0x00004550)
+                    throw new Exception("Can't find PE header");
+                return (MachineType)br.ReadUInt16();
+            }
         }
 
         public enum MachineType : ushort
@@ -26,6 +25,7 @@ namespace Is64Bit
             IMAGE_FILE_MACHINE_UNKNOWN = 0x0,
             IMAGE_FILE_MACHINE_AM33 = 0x1d3,
             IMAGE_FILE_MACHINE_AMD64 = 0x8664,
+            IMAGE_FILE_MACHINE_ARM64 = 0xaa64,
             IMAGE_FILE_MACHINE_ARM = 0x1c0,
             IMAGE_FILE_MACHINE_EBC = 0xebc,
             IMAGE_FILE_MACHINE_I386 = 0x14c,
@@ -51,6 +51,7 @@ namespace Is64Bit
             switch (GetDllMachineType(filePath))
             {
                 case MachineType.IMAGE_FILE_MACHINE_AMD64:
+                case MachineType.IMAGE_FILE_MACHINE_ARM64:
                 case MachineType.IMAGE_FILE_MACHINE_IA64:
                     return true;
                 case MachineType.IMAGE_FILE_MACHINE_I386:

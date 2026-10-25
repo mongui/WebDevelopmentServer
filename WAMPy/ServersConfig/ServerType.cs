@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Diagnostics;
+using System.IO;
+using System.Text.RegularExpressions;
 
 namespace WDS
 {
@@ -23,7 +24,6 @@ namespace WDS
         public List<String> ActiveModules = new List<String>();
         public List<ConfigModules> ModulesConfig = new List<ConfigModules>();
         public List<CustomSetting> CustomSettings = new List<CustomSetting>();
-        public String CGIlinker;
     }
 
     public class PHPs : Versions
@@ -52,49 +52,90 @@ namespace WDS
         public bool Is32Bits;
         public bool Is64Bits;
 
+        // -1 = unknown.
+        private int _VerNum1 = -1;
+        private int _VerNum2 = -1;
+        private int _VerNum3 = -1;
+
+        /// <summary>
+        /// Known version numbers (1 to 3 of them), or { -1 } if unknown.
+        /// </summary>
         public int[] Version()
         {
-            int[] a = { };
-            return this.Version(a);
+            if (this._VerNum1 < 0) { return new int[] { -1 }; }
+            if (this._VerNum2 < 0) { return new int[] { this._VerNum1 }; }
+            if (this._VerNum3 < 0) { return new int[] { this._VerNum1, this._VerNum2 }; }
+            return new int[] { this._VerNum1, this._VerNum2, this._VerNum3 };
         }
 
-        public int[] Version(int[] value)
+        public String VersionText()
         {
-            if (value.Length > 0)
-            {
-                this._VerNum1 = value[0];
-                this._VerNum2 = value[1];
-                this._VerNum3 = value[2];
-            }
+            int[] v = this.Version();
+            return (v[0] < 0) ? "Unknown" : String.Join(".", Array.ConvertAll(v, n => n.ToString()));
+        }
 
-            if (this._VerNum1 >= 0)
-            {
-                if (this._VerNum2 >= 0)
-                {
-                    if (this._VerNum3 >= 0) { return new int[] { this._VerNum1, this._VerNum2, this._VerNum3 }; }
-                    else { return new int[] { this._VerNum1, this._VerNum2 }; }
-                }
-                else { return new int[] { this._VerNum1 }; }
-            }
-            else { return new int[] { -1 }; }
+        /// <summary>
+        /// Version number at a position, or 0 if unknown.
+        /// </summary>
+        public int VersionPart(int index)
+        {
+            int[] v = this.Version();
+            return (index < v.Length && v[index] >= 0) ? v[index] : 0;
         }
 
         public int[] Version(String value)
         {
+            this._VerNum1 = this._VerNum2 = this._VerNum3 = -1;
             if (value != null)
             {
-                string[] val = value.Split('.');
-                this._VerNum1 = (val[0].Length > 0) ? Convert.ToInt16(System.Text.RegularExpressions.Regex.Replace(val[0], "[^.0-9]", "")) : -1;
-                this._VerNum2 = (val[1].Length > 0) ? Convert.ToInt16(System.Text.RegularExpressions.Regex.Replace(val[1], "[^.0-9]", "")) : -1;
-                this._VerNum3 = (val[2].Length > 0) ? Convert.ToInt16(System.Text.RegularExpressions.Regex.Replace(val[2], "[^.0-9]", "")) : -1;
+                // Accepts "2.4.17", "5.6", "10.4.12-MariaDB", "8.0.33.0"...
+                Match m = Regex.Match(value, @"(\d+)(?:\.(\d+))?(?:\.(\d+))?");
+                if (m.Success)
+                {
+                    this._VerNum1 = Int32.Parse(m.Groups[1].Value);
+                    if (m.Groups[2].Success) this._VerNum2 = Int32.Parse(m.Groups[2].Value);
+                    if (m.Groups[3].Success) this._VerNum3 = Int32.Parse(m.Groups[3].Value);
+                }
             }
 
             return this.Version();
         }
 
-        private int _VerNum1;
-        private int _VerNum2;
-        private int _VerNum3;
+        /// <summary>
+        /// Reads version and architecture of the executable.
+        /// </summary>
+        protected void ReadExeInfo()
+        {
+            try
+            {
+                FileVersionInfo info = FileVersionInfo.GetVersionInfo(this.Exe);
+                this.Version(info.ProductVersion ?? info.FileVersion);
+            }
+            catch (Exception)
+            {
+                this.Version((String)null);
+            }
+
+            bool? is64 = null;
+            try
+            {
+                is64 = Is64Bit.GetBits.UnmanagedDllIs64Bit(this.Exe);
+            }
+            catch (Exception)
+            {
+            }
+            this.Is64Bits = (is64 == true);
+            this.Is32Bits = (is64 == false);
+        }
+
+        public void LoadExe(String exe)
+        {
+            this.Exe = exe;
+            if (File.Exists(exe))
+            {
+                this.ReadExeInfo();
+            }
+        }
     }
 
     public class ServerType
@@ -105,241 +146,157 @@ namespace WDS
 
         public ServerType()
         {
-            // Get servers executables/linkers.
-            if (Globals.ActiveWebServerVersion.Length > 0)
-                this.WebServer.Exe = this.FindServerFile(this.WebServer.AvailableFiles, Globals.AppFolder + @"bin\WebServer\" + Globals.ActiveWebServerVersion + @"\");
-            if (Globals.ActivePHPVersion.Length > 0)
-                this.PHP.Exe = this.FindServerFile(this.PHP.AvailableFiles, Globals.AppFolder + @"bin\PHP\" + Globals.ActivePHPVersion + @"\");
-            if (Globals.ActiveMySQLVersion.Length > 0)
-                this.DataBase.Exe = this.FindServerFile(this.DataBase.AvailableFiles, Globals.AppFolder + @"bin\MySQL\" + Globals.ActiveMySQLVersion + @"\");
-            
-            bool WSExeExists = (File.Exists(this.WebServer.Exe));
-            bool PHPExeExists = (File.Exists(this.PHP.Exe));
-            bool DBExeExists = (File.Exists(this.DataBase.Exe));
+            // Get servers executables.
+            if (!String.IsNullOrEmpty(Globals.ActiveWebServerVersion))
+                this.WebServer.LoadExe(FindServerFile(this.WebServer.AvailableFiles, Globals.AppFolder + @"bin\WebServer\" + Globals.ActiveWebServerVersion + @"\"));
+            if (!String.IsNullOrEmpty(Globals.ActivePHPVersion))
+                this.PHP.LoadExe(FindServerFile(this.PHP.AvailableFiles, Globals.AppFolder + @"bin\PHP\" + Globals.ActivePHPVersion + @"\"));
+            if (!String.IsNullOrEmpty(Globals.ActiveMySQLVersion))
+                this.DataBase.LoadExe(FindServerFile(this.DataBase.AvailableFiles, Globals.AppFolder + @"bin\MySQL\" + Globals.ActiveMySQLVersion + @"\"));
 
-            if (WSExeExists)
+            if (File.Exists(this.WebServer.Exe))
             {
-                // Get web server types.
-                if (this.WebServer.Exe.ToLower().Contains("lighttpd.exe")) { this.WebServer.Type = WebServers.WSType.lighttpd; }
-                else if (this.WebServer.Exe.ToLower().Contains("httpd.exe") || WebServer.Exe.ToLower().Contains("apache.exe")) { this.WebServer.Type = WebServers.WSType.Apache; }
-                else if (this.WebServer.Exe.ToLower().Contains("nginx.exe")) { this.WebServer.Type = WebServers.WSType.nginx; }
-                else if (this.WebServer.Exe.ToLower().Contains("node.exe")) { this.WebServer.Type = WebServers.WSType.NodeJS; }
-                else if (this.WebServer.Exe.ToLower().Contains("iisexpress.exe")) { this.WebServer.Type = WebServers.WSType.IIS; }
-
-                // Get server version.
-                this.WebServer.Version(FileVersionInfo.GetVersionInfo(WebServer.Exe).ProductVersion);
-
-                // Get architecture type.
-                this.WebServer.Is64Bits = (bool)Is64Bit.GetBits.UnmanagedDllIs64Bit(WebServer.Exe);
-                this.WebServer.Is32Bits = !this.WebServer.Is64Bits;
-            }
-
-            if (PHPExeExists)
-            {
-                // Get server version.
-                this.PHP.Version(FileVersionInfo.GetVersionInfo(PHP.Exe).ProductVersion);
-
-                // Get architecture type.
-                this.PHP.Is64Bits = (bool)Is64Bit.GetBits.UnmanagedDllIs64Bit(PHP.Exe);
-                this.PHP.Is32Bits = !this.PHP.Is64Bits;
-            }
-            if (DBExeExists)
-            {
-                // Get database types. (NOT FINISHED YET)
-                if (this.DataBase.Exe.ToLower().Contains("mysqld.exe")) { this.DataBase.Type = DataBases.DBType.MySQL; }
-
-                // Get server version.
-                this.DataBase.Version(FileVersionInfo.GetVersionInfo(DataBase.Exe).ProductVersion);
-
-                // Get architecture type.
-                this.DataBase.Is64Bits = (bool)Is64Bit.GetBits.UnmanagedDllIs64Bit(DataBase.Exe);
-                this.DataBase.Is32Bits = !this.DataBase.Is64Bits;
-
-                // Stupid way to know if the database server is MySQL or MariaDB.
-                String DBPath = Path.GetDirectoryName(DataBase.Exe.Replace(@"bin\mysql.exe", ""));
-                if (File.Exists(DBPath + @"\README"))
+                String exe = Path.GetFileName(this.WebServer.Exe).ToLowerInvariant();
+                switch (exe)
                 {
-                    String line = "";
-                    using (StreamReader reader = new StreamReader(DBPath + @"\README")) { line = reader.ReadLine(); }
-                    if (line.Contains("MariaDB")) { this.DataBase.Type = DataBases.DBType.MariaDB; }
-                    else { this.DataBase.Type = DataBases.DBType.MySQL; }
+                    case "lighttpd.exe": this.WebServer.Type = WebServers.WSType.lighttpd; break;
+                    case "httpd.exe":
+                    case "apache.exe": this.WebServer.Type = WebServers.WSType.Apache; break;
+                    case "nginx.exe": this.WebServer.Type = WebServers.WSType.nginx; break;
+                    case "node.exe": this.WebServer.Type = WebServers.WSType.NodeJS; break;
+                    case "iisexpress.exe": this.WebServer.Type = WebServers.WSType.IIS; break;
                 }
+            }
+
+            if (File.Exists(this.DataBase.Exe))
+            {
+                this.DataBase.Type = IsMariaDB(this.DataBase.Exe) ? DataBases.DBType.MariaDB : DataBases.DBType.MySQL;
             }
         }
 
-        private List<DirectoryInfo> _Paths = new List<DirectoryInfo>();
-        private String _FoundServerFile;
-
-        private String FindServerFile(String[] ServerFiles, String ServerPath = null)
+        internal static bool IsMariaDB(String exe)
         {
-            if (ServerPath != null && Directory.Exists(ServerPath))
+            if (Path.GetFileName(exe).Equals("mariadbd.exe", StringComparison.OrdinalIgnoreCase))
             {
-                this._Paths.Add(new DirectoryInfo(ServerPath));
+                return true;
             }
 
-            if (this._Paths.Count <= 0)
+            try
+            {
+                FileVersionInfo info = FileVersionInfo.GetVersionInfo(exe);
+                String text = (info.ProductName ?? "") + " " + (info.CompanyName ?? "") + " " + (info.ProductVersion ?? "");
+                if (text.IndexOf("MariaDB", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+            }
+
+            // mysqld.exe is in <root>\bin; MariaDB packages have a README that names it.
+            try
+            {
+                DirectoryInfo root = Directory.GetParent(Path.GetDirectoryName(exe));
+                foreach (String name in new String[] { "README", "README.md", "README-wsrep" })
+                {
+                    String readme = Path.Combine(root.FullName, name);
+                    if (File.Exists(readme))
+                    {
+                        using (StreamReader reader = new StreamReader(readme))
+                        {
+                            String line = reader.ReadLine();
+                            if (line != null && line.IndexOf("MariaDB", StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Breadth-first search of the first known executable inside ServerPath.
+        /// </summary>
+        internal static String FindServerFile(String[] ServerFiles, String ServerPath)
+        {
+            if (!Directory.Exists(ServerPath))
             {
                 return null;
             }
 
-            DirectoryInfo Find;
-            using (var iter = this._Paths.GetEnumerator())
-            {
-                iter.MoveNext();
-                Find = iter.Current;
-            }
+            Queue<DirectoryInfo> pending = new Queue<DirectoryInfo>();
+            pending.Enqueue(new DirectoryInfo(ServerPath));
 
-            foreach (FileInfo File in Find.GetFiles())
+            while (pending.Count > 0)
             {
-                foreach (String SF in ServerFiles)
+                DirectoryInfo dir = pending.Dequeue();
+                try
                 {
-                    if (SF == File.Name.ToLower())
+                    // Respect the order of ServerFiles (php-cgi.exe before php.exe...).
+                    foreach (String SF in ServerFiles)
                     {
-                        this._Paths.Clear();
-                        this._FoundServerFile = File.FullName;
-                        return File.FullName;
+                        String candidate = Path.Combine(dir.FullName, SF);
+                        if (File.Exists(candidate))
+                        {
+                            return candidate;
+                        }
+                    }
+
+                    foreach (DirectoryInfo sub in dir.GetDirectories())
+                    {
+                        pending.Enqueue(sub);
                     }
                 }
-            }
-
-            foreach (DirectoryInfo subDirectory in Find.GetDirectories())
-            {
-                if (subDirectory.ToString() == "bin")
+                catch (Exception)
                 {
-                    this._FoundServerFile = Find.FullName.ToString();
-                    this._Paths.Clear();
+                    // Unreadable folder: skip it.
                 }
-
-                this._Paths.Add(subDirectory);
             }
-
-            this._Paths.Remove(Find);
-            String RtrnFile = this.FindServerFile(ServerFiles);
-            return RtrnFile;
+            return null;
         }
 
         public String[] LoadAvailableModules(String ServerType)
         {
-            String ModulesDir = "";
-            switch(ServerType)
-            {
-                case "Apache":
-                    ModulesDir = Directory.GetParent(Path.GetDirectoryName(this.WebServer.Exe)).ToString() + @"\modules\";
-                    break;
-                case "lighttpd":
-                    ModulesDir = Path.GetDirectoryName(this.WebServer.Exe) + @"\modules\";
-                    break;
-                case "PHP":
-                    ModulesDir = Path.GetDirectoryName(this.PHP.Exe).ToString() + @"\ext\";
-                    break;
-                default:
-                    return null;
-            }
-
-            String[] AvailableMods = {};
-
+            String ModulesDir;
             try
             {
-                AvailableMods = Directory.GetFiles(ModulesDir);
+                switch (ServerType)
+                {
+                    case "Apache":
+                        ModulesDir = Directory.GetParent(Path.GetDirectoryName(this.WebServer.Exe)).FullName + @"\modules\";
+                        break;
+                    case "lighttpd":
+                        ModulesDir = Path.GetDirectoryName(this.WebServer.Exe) + @"\modules\";
+                        break;
+                    case "PHP":
+                        ModulesDir = Path.GetDirectoryName(this.PHP.Exe) + @"\ext\";
+                        break;
+                    default:
+                        return null;
+                }
             }
-            catch(Exception ex)
+            catch (Exception)
             {
-                Globals.Error.Show(ex.Message);
+                return null;
             }
 
+            if (!Directory.Exists(ModulesDir))
+            {
+                return new String[0];
+            }
+
+            String[] AvailableMods = Directory.GetFiles(ModulesDir);
             for (int i = 0; i < AvailableMods.Length; i++)
             {
-                AvailableMods[i] = AvailableMods[i].Replace(ModulesDir, "");
+                AvailableMods[i] = Path.GetFileName(AvailableMods[i]);
             }
-
             return AvailableMods;
-        }
-
-        public bool WebServerLoadsPHP(WebServers.WSType SrvType)
-        {
-            Globals.Processes.ExternalPHP = false;
-            Globals.Processes.InternalPHP = false;
-            int[] PHPver = new int[3];
-            try {
-                PHPver = Globals.Servers.PHP.Version();
-            }
-            catch(Exception)
-            {
-                return false;
-            }
-
-            switch (SrvType)
-            {
-                case WebServers.WSType.Apache:
-                    int[] WSver = Globals.Servers.WebServer.Version();
-
-                    String PHPDir = Path.GetDirectoryName(Globals.Servers.PHP.Exe);
-
-                    // SAPI.
-                    String LinkerFile =
-                        "php" + PHPver[0] +
-                        "apache" + WSver[0] + "_" + WSver[1] +
-                        "-php" + PHPver[0] + "." + PHPver[1] +
-                        "." + ((Globals.Servers.WebServer.Is32Bits) ? "win32" : "win64") +
-                        "*.dll";
-
-                    String[] AvailableLinkers = Directory.GetFiles(Globals.AppFolder + @"extras\", LinkerFile);
-
-                    if (AvailableLinkers.Length > 0)
-                    {
-                        Globals.Servers.WebServer.CGIlinker = AvailableLinkers[0];
-                        Globals.Processes.InternalPHP = true;
-                    }
-                    else // FastCGI.
-                    {
-                        LinkerFile =
-                            "mod_fcgid.so.apache" + ((WSver[1] >= 4) ? WSver[0].ToString() + "_" + WSver[1].ToString() : WSver[0].ToString()) +
-                            "." + ((Globals.Servers.WebServer.Is32Bits) ? "win32" : "win64") +
-                            "*";
-
-                        AvailableLinkers = Directory.GetFiles(Globals.AppFolder + @"extras\", LinkerFile);
-                        
-                        if (AvailableLinkers.Length > 0)
-                        {
-                            Globals.Servers.WebServer.CGIlinker = AvailableLinkers[0];
-                            Globals.Processes.InternalPHP = true;
-                        }
-                        else // CGI.
-                        {
-                            Globals.AddToLog("It is not possible to connect Apache " + WSver[0] + "." + WSver[1] + " version with PHP " + PHPver[0] + "." + PHPver[1] + ".");
-
-                            Globals.Servers.WebServer.CGIlinker = Path.GetFullPath(Path.GetDirectoryName(Globals.Servers.WebServer.Exe) + @"\..\modules\mod_cgi.so");
-                            
-                            if (File.Exists(Globals.Servers.WebServer.CGIlinker))
-                            {
-                                Globals.AddToLog("Trying with CGI module (Use this only for development and testing purposes).");
-                                Globals.Processes.InternalPHP = true; 
-                            }
-                        }
-                    }
-                    break;
-                case WebServers.WSType.nginx:
-                    if (PHPver[0] == 5) // FastCGI.
-                    {
-                        Globals.Processes.ExternalPHP = true;
-                    }
-                    break;
-                case WebServers.WSType.lighttpd:
-                    if (PHPver[0] < 5) // CGI.
-                    {
-                        Globals.Processes.InternalPHP = true;
-                    }
-                    else // FastCGI.
-                    {
-                        Globals.Processes.ExternalPHP = true;
-                    }
-                    break;
-                default:
-                    Globals.Processes.ExternalPHP = true;
-                    break;
-            }
-
-            return Globals.Processes.InternalPHP;
         }
     }
 }

@@ -136,11 +136,17 @@ namespace WDS
         {
             VirtualHost newVHost = new VirtualHost();
             newVHost.ServerName = "New virtual server";
-            newVHost.IP = "*";
+            newVHost.IP = "127.0.0.1";
             newVHost.Port = "80";
+            newVHost.ServerAlias = "";
+            newVHost.Others = "";
             newVHost.DocumentRoot = Globals.AppFolder;
 
             newVHost.VHostID = this.Database.AddUpdateVirtualHost(newVHost);
+            if (newVHost.VHostID <= 0)
+            {
+                return;
+            }
 
             Globals.VHosts.Add(newVHost);
 
@@ -212,7 +218,11 @@ namespace WDS
                 newAlias.VHostID = Globals.VHosts[this.ServerList.SelectedIndex].VHostID;
 
                 newAlias.AliasID = Database.AddUpdateAlias(newAlias);
-                
+                if (newAlias.AliasID <= 0)
+                {
+                    return;
+                }
+
                 Globals.VHosts[this.ServerList.SelectedIndex].Alias.Add(newAlias);
                 this.Alias.Items.Add(newAlias.AliasName);
                 this.Alias.SelectedIndex = this.Alias.Items.Count - 1;
@@ -292,7 +302,12 @@ namespace WDS
                 newFolder.DirectoryName = Globals.AppFolder;
                 newFolder.VHostID = Globals.VHosts[this.ServerList.SelectedIndex].VHostID;
 
+                newFolder.Others = "";
                 newFolder.DirectoryID = Database.AddUpdateDirectory(newFolder);
+                if (newFolder.DirectoryID <= 0)
+                {
+                    return;
+                }
 
                 Globals.VHosts[this.ServerList.SelectedIndex].Directory.Add(newFolder);
                 this.Folders.Items.Add(newFolder.DirectoryName);
@@ -320,6 +335,9 @@ namespace WDS
                 this.SaveVHost();
             }
 
+            // Save the custom setting that is being edited.
+            this.SaveCurrentCustom();
+
             try
             {
                 if (Globals.Servers.WebServer.AvailableModules != null)
@@ -339,7 +357,7 @@ namespace WDS
             }
             catch(Exception ex)
             {
-                Globals.Error.Show(ex.Message);
+                Globals.Error.Show("Unexpected error", ex);
             }
         }
 
@@ -362,6 +380,10 @@ namespace WDS
                 this.SaveModuleConf();
             }
             this.SelModule = this.checkedListModules.SelectedIndex;
+            if (this.checkedListModules.SelectedItem == null)
+            {
+                return;
+            }
 
             String Module = this.checkedListModules.SelectedItem.ToString();
             bool exists = false;
@@ -371,7 +393,7 @@ namespace WDS
                 if (Mdl.Module == Module)
                 {
                     exists = true;
-                    string[] lines = Mdl.IfModule.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    string[] lines = (Mdl.IfModule ?? "").Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
                     this.ExtraConfig.Lines = lines;
 
                     switch(Mdl.IfModuleActive)
@@ -503,14 +525,31 @@ namespace WDS
             }
         }
 
+        private void SaveCurrentCustom()
+        {
+            if (this.SelCustom < 0 || this.SelCustom >= Globals.Servers.WebServer.CustomSettings.Count)
+            {
+                return;
+            }
+
+            CustomSetting current = Globals.Servers.WebServer.CustomSettings[this.SelCustom];
+            String text = string.Join(Environment.NewLine, this.CustomEdit.Lines);
+            if (text == current.Param)
+            {
+                return;
+            }
+
+            current.Param = text;
+            this.Database.SaveCustomSettings(1, current.Id, text);
+            if (this.SelCustom < this.CustomList.Items.Count)
+            {
+                this.CustomList.Items[this.SelCustom] = this.SplitCustomListString(this.CustomEdit.Lines.Length > 0 ? this.CustomEdit.Lines[0] : "");
+            }
+        }
+
         private void CustomList_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (this.SelCustom >= 0)
-            {
-                Globals.Servers.WebServer.CustomSettings[this.SelCustom].Param = string.Join(Environment.NewLine, this.CustomEdit.Lines);
-                this.Database.SaveCustomSettings(1, Globals.Servers.WebServer.CustomSettings[this.SelCustom].Id, this.CustomEdit.Text);
-                this.CustomList.Items[this.SelCustom] = this.SplitCustomListString(this.CustomEdit.Lines[0]);
-            }
+            this.SaveCurrentCustom();
 
             this.SelCustom = this.CustomList.SelectedIndex;
 

@@ -55,321 +55,277 @@ namespace WDS
 
     class WebServerConfig : CommonServerConfig
     {
+        /// <summary>
+        /// Copies the columns of a row into the properties with the same name.
+        /// NULL text columns become "" so the rest of the code never sees null.
+        /// </summary>
+        public static T FillFromRow<T>(DataRow row) where T : new()
+        {
+            T item = new T();
+            foreach (DataColumn col in row.Table.Columns)
+            {
+                PropertyInfo pi = typeof(T).GetProperty(col.ColumnName);
+                if (pi == null)
+                {
+                    continue;
+                }
+
+                object value = row[col];
+                try
+                {
+                    if (value == DBNull.Value)
+                    {
+                        if (pi.PropertyType == typeof(String))
+                        {
+                            pi.SetValue(item, "", null);
+                        }
+                        continue;
+                    }
+
+                    if (pi.PropertyType == typeof(bool))
+                    {
+                        pi.SetValue(item, Convert.ToInt64(value) != 0, null);
+                    }
+                    else
+                    {
+                        pi.SetValue(item, Convert.ChangeType(value, pi.PropertyType), null);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Bad value in the database: keep the default.
+                }
+            }
+
+            // String properties not present in the row are also set to "".
+            foreach (PropertyInfo pi in typeof(T).GetProperties())
+            {
+                if (pi.PropertyType == typeof(String) && pi.CanWrite && pi.GetValue(item, null) == null)
+                {
+                    pi.SetValue(item, "", null);
+                }
+            }
+            return item;
+        }
+
         public void LoadVirtualHosts()
         {
             Globals.VHosts.Clear();
-            
-            // Load Virtual Hosts info from database.
-            DataTable DBVHosts = Globals.dbConn.GetDataTable("SELECT * FROM VirtualHosts");
-            
+
+            DataTable DBVHosts = Globals.dbConn.GetDataTable("SELECT * FROM VirtualHosts ORDER BY VHostID");
             foreach (DataRow rowVH in DBVHosts.Rows)
             {
-                VirtualHost VH = new VirtualHost();
+                VirtualHost VH = FillFromRow<VirtualHost>(rowVH);
 
-                foreach (DataColumn colVH in DBVHosts.Columns)
-                {
-                    try
-                    {
-                        PropertyInfo pi = VH.GetType().GetProperty(colVH.ToString());
-                        pi.SetValue(VH, Convert.ChangeType(rowVH[colVH], pi.PropertyType), null);
-                        //Object collection = pi.GetValue(VH, null);
-                    }
-                    catch (Exception /*ex*/)
-                    {
-                        //Globals.Error.Show("Column: " + colVH.ToString() + "\r\nContent: " + rowVH[colVH].ToString() + "\r\n" + ex.Message);
-                    }
-                }
-
-                // Load Aliases info for each Virtual Host from database.
-                DataTable DBAliases = Globals.dbConn.GetDataTable("SELECT * FROM Aliases WHERE VHostID = " + rowVH["VHostID"].ToString());
-
+                DataTable DBAliases = Globals.dbConn.GetDataTable("SELECT * FROM Aliases WHERE VHostID = @p0", VH.VHostID);
                 foreach (DataRow rowAl in DBAliases.Rows)
                 {
-                    Aliases Alias = new Aliases();
-                    foreach (DataColumn colAl in DBAliases.Columns)
-                    {
-                        try
-                        {
-                            PropertyInfo pi = Alias.GetType().GetProperty(colAl.ToString());
-                            pi.SetValue(Alias, Convert.ChangeType(rowAl[colAl], pi.PropertyType), null);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-
-                    VH.Alias.Add(Alias);
+                    VH.Alias.Add(FillFromRow<Aliases>(rowAl));
                 }
 
-                // Load Directories info for each Virtual Host from database.
-                DataTable DBDirectories = Globals.dbConn.GetDataTable("SELECT * FROM Directories WHERE VHostID = " + rowVH["VHostID"].ToString());
-
+                DataTable DBDirectories = Globals.dbConn.GetDataTable("SELECT * FROM Directories WHERE VHostID = @p0", VH.VHostID);
                 foreach (DataRow rowDir in DBDirectories.Rows)
                 {
-                    Directories Directory = new Directories();
-                    foreach (DataColumn colDir in DBDirectories.Columns)
-                    {
-                        try
-                        {
-                            PropertyInfo pi = Directory.GetType().GetProperty(colDir.ToString());
-                            pi.SetValue(Directory, Convert.ChangeType(rowDir[colDir], pi.PropertyType), null);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-
-                    VH.Directory.Add(Directory);
+                    VH.Directory.Add(FillFromRow<Directories>(rowDir));
                 }
 
                 Globals.VHosts.Add(VH);
             }
         }
 
+        /// <summary>
+        /// True if the text is a valid TCP port (1-65535).
+        /// </summary>
+        public static bool IsValidPort(String port)
+        {
+            int p;
+            return Int32.TryParse(port, out p) && p >= 1 && p <= 65535;
+        }
+
         /* Add/Remove VirtualHosts/Aliases/Directories */
+        /// <summary>
+        /// Saves a virtual host. Returns its id (insert), the updated rows (update) or -1 on error.
+        /// </summary>
         public int AddUpdateVirtualHost(VirtualHost VH)
         {
-            if (VH.VHostID > 0)
+            if (!IsValidPort(VH.Port))
             {
-                try
-                {
-                    return Globals.dbConn.ExecuteNonQuery("UPDATE VirtualHosts SET " +
-                        "DocumentRoot = '" + VH.DocumentRoot + "', " +
-                        "ServerName = '" + VH.ServerName + "', " +
-                        "ServerAlias = '" + VH.ServerAlias + "', " +
-                        "IP = '" + VH.IP + "', " +
-                        "Port = " + VH.Port + ", " +
-                        "Others = '" + VH.Others + "' " +
-                        "WHERE VHostID = " + VH.VHostID);
-                }
-                catch(Exception /*ex*/)
-                {
-                    //Globals.Error.Show(ex.Message);
-                    return -1;
-                }
+                Globals.Error.Show("'" + VH.Port + "' is not a valid port (1-65535). The virtual server was not saved.");
+                return -1;
             }
-            else
+
+            try
             {
-                Globals.dbConn.ExecuteNonQuery("INSERT INTO VirtualHosts ('ServerName', 'IP', 'Port', 'DocumentRoot') VALUES ('" + VH.ServerName + "', '" + VH.IP + "', " + VH.Port + ", '" + VH.DocumentRoot + "')");
-                return Convert.ToInt32(Globals.dbConn.ExecuteScalar("SELECT MAX(VHostID) from VirtualHosts"));
+                if (VH.VHostID > 0)
+                {
+                    return Globals.dbConn.ExecuteNonQuery(
+                        "UPDATE VirtualHosts SET DocumentRoot = @p0, ServerName = @p1, ServerAlias = @p2, IP = @p3, Port = @p4, Others = @p5 WHERE VHostID = @p6",
+                        VH.DocumentRoot, VH.ServerName, VH.ServerAlias, VH.IP, Int32.Parse(VH.Port), VH.Others, VH.VHostID);
+                }
+
+                return (int)Globals.dbConn.ExecuteInsert(
+                    "INSERT INTO VirtualHosts (ServerName, IP, Port, DocumentRoot, ServerAlias, Others) VALUES (@p0, @p1, @p2, @p3, @p4, @p5)",
+                    VH.ServerName, VH.IP, Int32.Parse(VH.Port), VH.DocumentRoot, VH.ServerAlias ?? "", VH.Others ?? "");
+            }
+            catch (Exception ex)
+            {
+                Globals.Error.Show("Unable to save the virtual server", ex);
+                return -1;
             }
         }
 
         public void DeleteVirtualHost(int VHostID)
         {
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM VirtualHosts WHERE VHostID = " + VHostID);
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM Aliases WHERE VHostID = " + VHostID);
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM Directories WHERE VHostID = " + VHostID);
+            Globals.dbConn.ExecuteNonQuery("DELETE FROM VirtualHosts WHERE VHostID = @p0", VHostID);
+            Globals.dbConn.ExecuteNonQuery("DELETE FROM Aliases WHERE VHostID = @p0", VHostID);
+            Globals.dbConn.ExecuteNonQuery("DELETE FROM Directories WHERE VHostID = @p0", VHostID);
         }
 
         public int AddUpdateAlias(Aliases Al)
         {
-            if (Al.AliasID > 0)
+            try
             {
-                try
+                if (Al.AliasID > 0)
                 {
-                    return Globals.dbConn.ExecuteNonQuery("UPDATE Aliases SET AliasFolder = '" + Al.AliasFolder + "', AliasName = '" + Al.AliasName + "' WHERE AliasID = " + Al.AliasID);
+                    return Globals.dbConn.ExecuteNonQuery("UPDATE Aliases SET AliasFolder = @p0, AliasName = @p1 WHERE AliasID = @p2",
+                        Al.AliasFolder, Al.AliasName, Al.AliasID);
                 }
-                catch (Exception /*ex*/)
-                {
-                    //Globals.Error.Show(ex.Message);
-                    return -1;
-                }
+
+                return (int)Globals.dbConn.ExecuteInsert("INSERT INTO Aliases (AliasFolder, AliasName, VHostID) VALUES (@p0, @p1, @p2)",
+                    Al.AliasFolder, Al.AliasName, Al.VHostID);
             }
-            else
+            catch (Exception ex)
             {
-                Globals.dbConn.ExecuteNonQuery("INSERT INTO Aliases ('AliasFolder', 'AliasName', 'VHostID') VALUES ('" + Al.AliasFolder + "', '" + Al.AliasName + "', " + Al.VHostID + ")");
-                return Convert.ToInt32(Globals.dbConn.ExecuteScalar("SELECT MAX(AliasID) from Aliases"));
+                Globals.Error.Show("Unable to save the alias", ex);
+                return -1;
             }
         }
 
         public void DeleteAlias(Aliases Al)
         {
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM Aliases WHERE AliasID = " + Al.AliasID);
+            Globals.dbConn.ExecuteNonQuery("DELETE FROM Aliases WHERE AliasID = @p0", Al.AliasID);
         }
 
         public int AddUpdateDirectory(Directories Dir)
         {
-            if (Dir.DirectoryID > 0)
+            try
             {
-                try
+                if (Dir.DirectoryID > 0)
                 {
-                    return Globals.dbConn.ExecuteNonQuery("UPDATE Directories SET " +
-                        "VHostID = " + Dir.VHostID + ", " +
-                        "Others = '" + Dir.Others + "', " +
-                        "AllowOverride = " + ((Dir.AllowOverride == true) ? "1" : "0") + ", " +
-                        "MultiViews = " + ((Dir.MultiViews==true) ? "1" : "0") + ", " +
-                        "Indexes = " + ((Dir.Indexes == true) ? "1" : "0") + ", " +
-                        "Includes = " + ((Dir.Includes == true) ? "1" : "0") + ", " +
-                        "SymLinks = " + ((Dir.SymLinks == true) ? "1" : "0") + ", " +
-                        "DirectoryName = '" + Dir.DirectoryName + "' " +
-                        "WHERE VHostID = " + Dir.VHostID);
+                    return Globals.dbConn.ExecuteNonQuery(
+                        "UPDATE Directories SET VHostID = @p0, Others = @p1, AllowOverride = @p2, MultiViews = @p3, Indexes = @p4, Includes = @p5, SymLinks = @p6, DirectoryName = @p7 WHERE DirectoryID = @p8",
+                        Dir.VHostID, Dir.Others ?? "", Dir.AllowOverride ? 1 : 0, Dir.MultiViews ? 1 : 0, Dir.Indexes ? 1 : 0,
+                        Dir.Includes ? 1 : 0, Dir.SymLinks ? 1 : 0, Dir.DirectoryName, Dir.DirectoryID);
                 }
-                catch (Exception /*ex*/)
-                {
-                    //Globals.Error.Show(ex.Message);
-                    return -1;
-                }
-            }
-            else
-            {
-                Globals.dbConn.ExecuteNonQuery("INSERT INTO Directories ('VHostID', 'Others', 'AllowOverride', 'MultiViews', 'Indexes', 'Includes', 'SymLinks', 'DirectoryName') VALUES (" +
-                        Dir.VHostID + ", " +
-                        "'" + Dir.Others + "', " +
-                        ((Dir.AllowOverride == true) ? "1" : "0") + ", " +
-                        ((Dir.MultiViews == true) ? "1" : "0") + ", " +
-                        ((Dir.Indexes == true) ? "1" : "0") + ", " +
-                        ((Dir.Includes == true) ? "1" : "0") + ", " +
-                        ((Dir.SymLinks == true) ? "1" : "0") + ", " +
-                        "'" + Dir.DirectoryName + "'" +
-                    ")");
 
-                return Convert.ToInt32(Globals.dbConn.ExecuteScalar("SELECT MAX(DirectoryID) from Directories"));
+                return (int)Globals.dbConn.ExecuteInsert(
+                    "INSERT INTO Directories (VHostID, Others, AllowOverride, MultiViews, Indexes, Includes, SymLinks, DirectoryName) VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)",
+                    Dir.VHostID, Dir.Others ?? "", Dir.AllowOverride ? 1 : 0, Dir.MultiViews ? 1 : 0, Dir.Indexes ? 1 : 0,
+                    Dir.Includes ? 1 : 0, Dir.SymLinks ? 1 : 0, Dir.DirectoryName);
+            }
+            catch (Exception ex)
+            {
+                Globals.Error.Show("Unable to save the folder", ex);
+                return -1;
             }
         }
 
         public void DeleteDirectory(Directories Dir)
         {
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM Directories WHERE DirectoryID = " + Dir.DirectoryID);
+            Globals.dbConn.ExecuteNonQuery("DELETE FROM Directories WHERE DirectoryID = @p0", Dir.DirectoryID);
         }
 
         /* WebServer Modules Extra Settings */
         public void LoadModulesSettings()
         {
-            DataTable DBSettings = Globals.dbConn.GetDataTable("SELECT * FROM ConfigModules WHERE ServerType LIKE '" + Globals.Servers.WebServer.Type.ToString() + "'");
-
-            if (DBSettings.Rows.Count > 0)
+            DataTable DBSettings = Globals.dbConn.GetDataTable("SELECT * FROM ConfigModules WHERE ServerType = @p0", Globals.Servers.WebServer.Type.ToString());
+            foreach (DataRow row in DBSettings.Rows)
             {
-                foreach (DataRow row in DBSettings.Rows)
-                {
-                    ConfigModules ModCnf = new ConfigModules();
-                    foreach (DataColumn col in DBSettings.Columns)
-                    {
-                        try
-                        {
-                            PropertyInfo pi = ModCnf.GetType().GetProperty(col.ToString());
-                            pi.SetValue(ModCnf, Convert.ChangeType(row[col], pi.PropertyType), null);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-
-                    Globals.Servers.WebServer.ModulesConfig.Add(ModCnf);
-                }
+                Globals.Servers.WebServer.ModulesConfig.Add(FillFromRow<ConfigModules>(row));
             }
         }
 
+        /// <summary>
+        /// op: 0 = delete, 1 = update, 2 = insert.
+        /// </summary>
         public int SaveModulesSettings(ConfigModules mod, int op)
         {
-            String sql = "";
-
-            switch (op)
-            {
-                case 0:
-                    sql = "DELETE FROM ConfigModules WHERE Module LIKE '" + mod.Module + "'";
-                    break;
-                case 1:
-                    sql = "UPDATE ConfigModules SET IfModule = '" + mod.IfModule + "', IfModuleActive = " + mod.IfModuleActive + " WHERE Module LIKE '" + mod.Module + "'";
-                    break;
-                case 2:
-                    sql = "INSERT INTO ConfigModules ('IfModule', 'IfModuleActive', 'Module', 'ServerType') VALUES ('" + mod.IfModule + "', " + mod.IfModuleActive + ", '" + mod.Module + "', '" + Globals.Servers.WebServer.Type.ToString() + "')";
-                    break;
-            }
-
+            String type = Globals.Servers.WebServer.Type.ToString();
             try
             {
-                return Globals.dbConn.ExecuteNonQuery(sql);
+                switch (op)
+                {
+                    case 0:
+                        return Globals.dbConn.ExecuteNonQuery("DELETE FROM ConfigModules WHERE Module = @p0 AND ServerType = @p1", mod.Module, type);
+                    case 1:
+                        return Globals.dbConn.ExecuteNonQuery("UPDATE ConfigModules SET IfModule = @p0, IfModuleActive = @p1 WHERE Module = @p2 AND ServerType = @p3",
+                            mod.IfModule, mod.IfModuleActive, mod.Module, type);
+                    case 2:
+                        return Globals.dbConn.ExecuteNonQuery("INSERT INTO ConfigModules (IfModule, IfModuleActive, Module, ServerType) VALUES (@p0, @p1, @p2, @p3)",
+                            mod.IfModule, mod.IfModuleActive, mod.Module, type);
+                    default:
+                        return 0;
+                }
             }
-            catch(Exception)
+            catch (Exception ex)
             {
+                Globals.LogError("Unable to save the module settings", ex);
                 return 0;
             }
         }
-        
+
         public void LoadCustomSettings(String ServerType)
         {
-            DataTable DBSettings = Globals.dbConn.GetDataTable("SELECT Id, Param FROM CustomSettings WHERE ServerType='" + ServerType + "'");
-
-            if (DBSettings.Rows.Count > 0)
+            DataTable DBSettings = Globals.dbConn.GetDataTable("SELECT Id, Param FROM CustomSettings WHERE ServerType = @p0", ServerType);
+            foreach (DataRow row in DBSettings.Rows)
             {
-                foreach (DataRow row in DBSettings.Rows)
-                {
-                    CustomSetting CSett = new CustomSetting();
-                    foreach (DataColumn col in DBSettings.Columns)
-                    {
-                        try
-                        {
-                            PropertyInfo pi = CSett.GetType().GetProperty(col.ToString());
-                            pi.SetValue(CSett, Convert.ChangeType(row[col], pi.PropertyType), null);
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-
-                    Globals.Servers.WebServer.CustomSettings.Add(CSett);
-                }
+                Globals.Servers.WebServer.CustomSettings.Add(FillFromRow<CustomSetting>(row));
             }
         }
 
         public int SaveCustomSettings(int op)
         {
-            if (op == 2)
-            {
-                return this.SaveCustomSettings(op, 0, "");
-            }
-            else
-            {
-                return -1;
-            }
+            return (op == 2) ? this.SaveCustomSettings(op, 0, "") : -1;
         }
+
         public int SaveCustomSettings(int op, int Id)
         {
-            if (op == 0)
-            {
-                return this.SaveCustomSettings(op, Id, "");
-            }
-            else
-            {
-                return -1;
-            }
+            return (op == 0) ? this.SaveCustomSettings(op, Id, "") : -1;
         }
 
+        /// <summary>
+        /// op: 0 = delete, 1 = update, 2 = insert a new empty setting.
+        /// </summary>
         public int SaveCustomSettings(int op, int Id, String Param)
         {
-            String sql = "";
-
-            switch (op)
-            {
-                case 0:
-                    sql = "DELETE FROM CustomSettings WHERE Id = " + Id;
-                    break;
-                case 1:
-                    sql = "UPDATE CustomSettings SET Param = '" + Param + "' WHERE Id = " + Id;
-                    break;
-                case 2:
-                    sql = "INSERT INTO CustomSettings ('Param', 'ServerType') VALUES ('New Setting', '" + Globals.Servers.WebServer.Type.ToString() + "');";
-                    break;
-            }
-
             try
             {
-                return Globals.dbConn.ExecuteNonQuery(sql);
+                switch (op)
+                {
+                    case 0:
+                        return Globals.dbConn.ExecuteNonQuery("DELETE FROM CustomSettings WHERE Id = @p0", Id);
+                    case 1:
+                        return Globals.dbConn.ExecuteNonQuery("UPDATE CustomSettings SET Param = @p0 WHERE Id = @p1", Param, Id);
+                    case 2:
+                        return Globals.dbConn.ExecuteNonQuery("INSERT INTO CustomSettings (Param, ServerType) VALUES ('New Setting', @p0)",
+                            Globals.Servers.WebServer.Type.ToString());
+                    default:
+                        return -1;
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return 0;
+                Globals.LogError("Unable to save the custom setting", ex);
+                return -1;
             }
         }
 
         public void ClearConfig()
         {
             String[] SQLArray = {
-                           "DELETE FROM ActiveModules  WHERE ServerType LIKE 'Apache' OR ServerType LIKE 'nginx' OR ServerType LIKE 'lighttpd' OR ServerType LIKE 'NodeJS' OR ServerType LIKE 'IIS'",
-                           "DELETE FROM ConfigModules  WHERE ServerType LIKE 'Apache' OR ServerType LIKE 'nginx' OR ServerType LIKE 'lighttpd' OR ServerType LIKE 'NodeJS' OR ServerType LIKE 'IIS'",
-                           "DELETE FROM CustomSettings WHERE ServerType LIKE 'Apache' OR ServerType LIKE 'nginx' OR ServerType LIKE 'lighttpd' OR ServerType LIKE 'NodeJS' OR ServerType LIKE 'IIS'",
-                           
+                           "DELETE FROM ActiveModules  WHERE ServerType IN ('Apache', 'nginx', 'lighttpd', 'NodeJS', 'IIS')",
+                           "DELETE FROM ConfigModules  WHERE ServerType IN ('Apache', 'nginx', 'lighttpd', 'NodeJS', 'IIS')",
+                           "DELETE FROM CustomSettings WHERE ServerType IN ('Apache', 'nginx', 'lighttpd', 'NodeJS', 'IIS')",
                            "DELETE FROM Aliases",
                            "DELETE FROM Directories",
                            "DELETE FROM VirtualHosts"
@@ -381,58 +337,103 @@ namespace WDS
             }
             catch (Exception e)
             {
-                Globals.Error.Show(e.Message);
+                Globals.Error.Show("Unexpected error", e);
             }
         }
 
         public void SetDefaultConfig()
         {
-            SetDefaultConfig(Globals.AppFolder + @"www\", false);
+            SetDefaultConfig(Globals.AppFolder + @"www", false);
         }
 
         public void SetDefaultConfig(Boolean phpMyAdmin)
         {
-            SetDefaultConfig(Globals.AppFolder + @"www\", phpMyAdmin);
+            SetDefaultConfig(Globals.AppFolder + @"www", phpMyAdmin);
         }
 
         public void SetDefaultConfig(String WebFolder, Boolean phpMyAdmin)
         {
+            // Optional extra settings. Without them the program writes a working
+            // configuration by itself (see the *ConfigFile classes).
             String ConfigFile = Globals.AppFolder + @"extras\default\WebServer.txt";
-            if (!System.IO.File.Exists(ConfigFile))
-            {
-                Globals.Error.Show("The default config data file for this server doesn't exist.\r\nCan't set a new configuration.");
-                return;
-            }
 
             ClearConfig();
-            String[] SQLArray;
-            if(phpMyAdmin)
-            {
-                SQLArray = new String[] {
-                                    System.IO.File.ReadAllText(ConfigFile),
-                                    "INSERT INTO VirtualHosts VALUES('" + WebFolder + "\\','*','',80,'','127.0.0.1',1)",
-                                    "INSERT INTO Directories VALUES(1,1,'Order allow,deny\r\nAllow from all',1,1,1,1,1,'" + Globals.AppFolder + @"extras\phpMyAdmin\" + "')",
-                                    @"INSERT INTO Aliases VALUES(1,'" + Globals.AppFolder + @"extras\phpMyAdmin\" + "','/phpmyadmin',1)"
-                                };
-            }
-            else
-            {
-                SQLArray = new String[] {
-                                    System.IO.File.ReadAllText(ConfigFile),
-                                    "INSERT INTO VirtualHosts VALUES('" + WebFolder + "\\','*','',80,'','127.0.0.1',1)"
-                                };
-            }
 
             try
             {
-                Globals.dbConn.ExecuteNonQueryBulk(SQLArray);
+                if (System.IO.File.Exists(ConfigFile))
+                {
+                    Globals.dbConn.ExecuteNonQuery(System.IO.File.ReadAllText(ConfigFile));
+                }
+
+                String docRoot = WebFolder.TrimEnd('\\') + @"\";
+                CreateWebFolder(docRoot);
+                // Main server: only reachable from this computer by default.
+                Globals.dbConn.ExecuteNonQuery(
+                    "INSERT INTO VirtualHosts (DocumentRoot, IP, Others, Port, ServerAlias, ServerName, VHostID) VALUES (@p0, '127.0.0.1', '', 80, '', 'localhost', 1)",
+                    docRoot);
+
+                if (phpMyAdmin)
+                {
+                    String pma = Globals.AppFolder + @"extras\phpMyAdmin\";
+                    Globals.dbConn.ExecuteNonQuery(
+                        "INSERT INTO Directories (DirectoryID, VHostID, Others, AllowOverride, MultiViews, Indexes, Includes, SymLinks, DirectoryName) VALUES (1, 1, @p0, 1, 1, 1, 1, 1, @p1)",
+                        "Order allow,deny\r\nAllow from all", pma);
+                    Globals.dbConn.ExecuteNonQuery(
+                        "INSERT INTO Aliases (AliasID, AliasFolder, AliasName, VHostID) VALUES (1, @p0, '/phpmyadmin', 1)",
+                        pma);
+                }
             }
             catch (Exception e)
             {
-                Globals.Error.Show(e.Message);
+                Globals.Error.Show("Unexpected error", e);
             }
 
             LoadVirtualHosts();
+        }
+
+        /// <summary>
+        /// Without any virtual server the web server has nothing to listen on: create
+        /// http://localhost/ on AppFolder\www (only reachable from this computer).
+        /// </summary>
+        public void EnsureDefaultVirtualHost()
+        {
+            if (Globals.VHosts.Count > 0)
+            {
+                return;
+            }
+
+            String docRoot = Globals.AppFolder + @"www\";
+            try
+            {
+                CreateWebFolder(docRoot);
+                Globals.dbConn.ExecuteNonQuery(
+                    "INSERT INTO VirtualHosts (DocumentRoot, IP, Others, Port, ServerAlias, ServerName, VHostID) VALUES (@p0, '127.0.0.1', '', 80, '', 'localhost', 1)",
+                    docRoot);
+                Globals.AddToLog("No virtual server was configured: http://localhost/ now serves " + docRoot);
+            }
+            catch (Exception e)
+            {
+                Globals.LogError("Unable to create the default virtual server", e);
+            }
+            LoadVirtualHosts();
+        }
+
+        private static void CreateWebFolder(String docRoot)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(docRoot);
+                if (System.IO.Directory.GetFileSystemEntries(docRoot).Length == 0)
+                {
+                    System.IO.File.WriteAllText(docRoot + "index.php", "<?php phpinfo(); ?>\r\n");
+                    System.IO.File.WriteAllText(docRoot + "index.html", "<!doctype html><title>It works</title><p>The web server is running.</p>\r\n");
+                }
+            }
+            catch (Exception e)
+            {
+                Globals.LogError("Unable to create " + docRoot + "", e);
+            }
         }
     }
 }

@@ -22,6 +22,10 @@ namespace WDS
             try
             {
                 Globals.Servers.PHP.AvailableModules = Globals.Servers.LoadAvailableModules("PHP");
+                if (Globals.Servers.PHP.AvailableModules == null)
+                {
+                    throw new InvalidOperationException("PHP not found.");
+                }
 
                 foreach (String ModuleName in Globals.Servers.PHP.AvailableModules)
                 {
@@ -48,12 +52,16 @@ namespace WDS
 
         private void PHPConfigWindow_FormClosing(object sender, FormClosingEventArgs e)
         {
-            Globals.Servers.PHP.ActiveModules.Clear();
-            foreach (var item in this.checkedListModules.CheckedItems)
+            // Without a PHP folder the list is empty: keep the saved modules.
+            if (Globals.Servers.PHP.AvailableModules != null)
             {
-                Globals.Servers.PHP.ActiveModules.Add(item.ToString());
+                Globals.Servers.PHP.ActiveModules.Clear();
+                foreach (var item in this.checkedListModules.CheckedItems)
+                {
+                    Globals.Servers.PHP.ActiveModules.Add(item.ToString());
+                }
+                this.Database.SaveActiveModules("PHP", Globals.Servers.PHP.ActiveModules);
             }
-            this.Database.SaveActiveModules("PHP", Globals.Servers.PHP.ActiveModules);
 
             // Faltan guardar todos los cambios hechos en PHP Settings.
             this.checkedListSettings_SelectedIndexChanged(null, null);
@@ -92,6 +100,14 @@ namespace WDS
             if (SelSetting != this.checkedListSettings.SelectedIndex)
             {
                 SelSetting = this.checkedListSettings.SelectedIndex;
+                if (SelSetting < 0 || SelSetting >= this.PHPSettings.Settings.Count)
+                {
+                    SelSetting = -1;
+                    this.PHPSettingValue.Text = "";
+                    this.PHPSettingValue.Enabled = false;
+                    this.RemoveSetting.Enabled = false;
+                    return;
+                }
                 SelParam = this.checkedListSettings.SelectedItem.ToString();
                 this.PHPSettingValue.Text = this.PHPSettings.Settings[SelSetting].Value;
 
@@ -167,7 +183,8 @@ namespace WDS
         private void checkedListModules_SelectedIndexChanged(object sender, EventArgs e)
         {
             int index = -1;
-            if (!String.IsNullOrEmpty(SelModName) && SelModName != "" && SelModName != this.checkedListModules.SelectedItem.ToString())
+            String selectedName = (this.checkedListModules.SelectedItem != null) ? this.checkedListModules.SelectedItem.ToString() : null;
+            if (!String.IsNullOrEmpty(SelModName) && SelModName != selectedName)
             {
                 index = this.PHPSettings.FindModule(SelModName);
                 if (index >= 0)
@@ -197,14 +214,21 @@ namespace WDS
             if (SelModule != this.checkedListModules.SelectedIndex)
             {
                 SelModule = this.checkedListModules.SelectedIndex;
-                SelModName = this.checkedListModules.SelectedItem.ToString();
+                if (selectedName == null)
+                {
+                    SelModName = null;
+                    this.ModulesConfig.Text = "";
+                    this.ModulesConfig.Enabled = false;
+                    return;
+                }
+                SelModName = selectedName;
 
                 index = this.PHPSettings.FindModule(SelModName);
 
                 this.ModuleTag.Text = "[" + SelModName.ToString().Replace("php_", "").Replace(".dll", "") + "]";
                 if (index >= 0)
                 {
-                    string[] lines = this.PHPSettings.Modules[index].Value.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+                    string[] lines = (this.PHPSettings.Modules[index].Value ?? "").Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
                     this.ModulesConfig.Lines = lines;
                 }
                 else

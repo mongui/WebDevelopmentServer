@@ -13,19 +13,12 @@ namespace WDS
         {
             List<String> ActiveMods = new List<String>();
 
-            // Load Active Modules from database.
-            DataTable DBModules = Globals.dbConn.GetDataTable("SELECT Module FROM ActiveModules WHERE ServerType='" + ServerType + "'");
-
-            // Remove their path.
+            DataTable DBModules = Globals.dbConn.GetDataTable("SELECT Module FROM ActiveModules WHERE ServerType = @p0", ServerType);
             foreach (DataRow rowMod in DBModules.Rows)
             {
-                try
+                if (rowMod[0] != DBNull.Value)
                 {
                     ActiveMods.Add(rowMod[0].ToString());
-                }
-                catch (Exception /*ex*/)
-                {
-                    //Globals.Error.Show(ex.Message);
                 }
             }
 
@@ -34,59 +27,67 @@ namespace WDS
 
         public int SaveActiveModules(String ServerType, List<String> ActiveMods)
         {
-            // Remove all entries of the old server config.
-            Globals.dbConn.ExecuteNonQuery("DELETE FROM ActiveModules WHERE ServerType LIKE '" + ServerType + "'");
-
-            // Add new entries.
-            List<String> InsertString = new List<String>();
-
-            if (ActiveMods.Count > 0)
+            List<String> sqls = new List<String>();
+            sqls.Add("DELETE FROM ActiveModules WHERE ServerType = '" + ServerType.Replace("'", "''") + "'");
+            foreach (String module in ActiveMods)
             {
-                foreach (String module in ActiveMods)
-                {
-                    InsertString.Add("('" + module + "', '" + ServerType + "')");
-                }
-                return Globals.dbConn.ExecuteNonQuery("INSERT INTO ActiveModules ('Module', 'ServerType') VALUES " + String.Join(", ", InsertString.ToArray()));
+                sqls.Add("INSERT INTO ActiveModules (Module, ServerType) VALUES ('" + module.Replace("'", "''") + "', '" + ServerType.Replace("'", "''") + "')");
             }
-            else
+
+            // One transaction: either all modules are saved or none.
+            try
             {
+                return Globals.dbConn.ExecuteNonQueryBulk(sqls.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Globals.Error.Show("Unable to save the active modules", ex);
                 return 0;
             }
         }
 
-        public String GetModuleDescription(String Module)
+        private DataRow FindDescription(String Module)
         {
+            if (!this.ModulesDescription.Columns.Contains("Name"))
+            {
+                return null;
+            }
             foreach (DataRow row in this.ModulesDescription.Rows)
             {
                 if (String.Compare(row["Name"].ToString(), Module, true) == 0)
                 {
-                    return row["Description"].ToString().Replace("\n", Environment.NewLine);
+                    return row;
                 }
             }
-            return "";
+            return null;
+        }
+
+        public String GetModuleDescription(String Module)
+        {
+            DataRow row = FindDescription(Module);
+            return (row != null) ? row["Description"].ToString().Replace("\n", Environment.NewLine) : "";
         }
 
         public String GetModuleURL(String Module)
         {
-            foreach (DataRow row in this.ModulesDescription.Rows)
-            {
-                if (String.Compare(row["Name"].ToString(), Module, true) == 0)
-                {
-                    return row["URL"].ToString();
-                }
-            }
-            return "";
+            DataRow row = FindDescription(Module);
+            return (row != null) ? row["URL"].ToString() : "";
         }
 
         public void LoadModulesDescription()
         {
+            if (Globals.dbServ == null)
+            {
+                return;
+            }
+
             try
             {
                 ModulesDescription = Globals.dbServ.GetDataTable("SELECT * FROM ModulesDescription");
             }
             catch (Exception)
             {
-                Globals.Error.Show("'Servers.db' is not a valid database.");
+                Globals.AddToLog("'Servers.db' is not a valid database.");
             }
         }
     }

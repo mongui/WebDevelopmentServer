@@ -35,20 +35,32 @@ namespace WDS
 
             try
             {
-                StreamWriter WriteFile = new StreamWriter(this.lighttpdInstallation + @"conf\lighttpd.conf");
-                
+                using (StreamWriter WriteFile = new StreamWriter(this.lighttpdInstallation + @"conf\lighttpd.conf"))
+                {
                 bool AddSSI = false;
                 String fullPath;
 
                 foreach(VirtualHost vh in Globals.VHosts)
                 {
-                    fullPath = Path.Combine(this.lighttpdInstallation, vh.DocumentRoot);
-                    fullPath = Path.GetFullPath((new Uri(fullPath)).LocalPath).Replace('\\', '/').ToLower();
-
-                    if (vh.IP == "*" || vh.IP == "") { vh.IP = "127.0.0.1"; }
-                    if (vh.VHostID != 1)
+                    if (!WebServerConfig.IsValidPort(vh.Port) || String.IsNullOrEmpty(vh.DocumentRoot))
                     {
-                        WriteFile.WriteLine(tab(tabn) + "$SERVER[\"socket\"] == \"" + vh.IP + ":" + vh.Port + "\" {");
+                        Globals.AddToLog("Virtual server '" + vh.ServerName + "' skipped: invalid port or empty document root.");
+                        continue;
+                    }
+
+                    fullPath = Path.GetFullPath(Path.Combine(this.lighttpdInstallation, vh.DocumentRoot)).Replace('\\', '/').TrimEnd('/');
+
+                    bool anyIP = String.IsNullOrEmpty(vh.IP) || vh.IP == "*";
+                    if (vh.VHostID == 1)
+                    {
+                        // variables.conf is included without its own server.bind/server.port
+                        // (see WriteVariablesCopy), so these lines are the only ones.
+                        WriteFile.WriteLine("server.bind = \"" + (anyIP ? "0.0.0.0" : vh.IP) + "\"");
+                        WriteFile.WriteLine("server.port = " + vh.Port);
+                    }
+                    else
+                    {
+                        WriteFile.WriteLine(tab(tabn) + "$SERVER[\"socket\"] == \"" + (anyIP ? "" : vh.IP) + ":" + vh.Port + "\" {");
                         tabn++;
                     }
                     WriteFile.WriteLine(tab(tabn) + "server.document-root = \"" + vh.DocumentRoot.Replace("\\", "/") + "\"");
@@ -62,6 +74,10 @@ namespace WDS
 
                     foreach (Aliases alias in vh.Alias)
                     {
+                        if (String.IsNullOrEmpty(alias.AliasFolder) || String.IsNullOrEmpty(alias.AliasName))
+                        {
+                            continue;
+                        }
                         an = alias.AliasName.Replace("\\", "/");
                         an += (an[an.Length - 1] != '/') ? "/" : "";
                         af = alias.AliasFolder.Replace("\\", "/");
@@ -78,8 +94,8 @@ namespace WDS
 
                         foreach (Directories dir in vh.Directory)
                         {
-                            dp = dir.DirectoryName.Replace("\\", "/");
-                            if (dp.ToLower().Equals(af.ToLower()))
+                            dp = (dir.DirectoryName ?? "").Replace("\\", "/").TrimEnd('/');
+                            if (dp.Equals(af.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
                             {
                                 // This is the same code...
                                 WriteFile.WriteLine(tab(tabn) + "$HTTP[\"url\"] =~ \"^" + an + "\" {");
@@ -100,13 +116,19 @@ namespace WDS
                         aliasCount++;
                     }
                     
-                    DirPaths = DirPaths.ConvertAll(d => d.ToLower());
+                    DirPaths = DirPaths.ConvertAll(d => d.TrimEnd('/').ToLower());
                     foreach (Directories dir in vh.Directory)
                     {
-                        dp = dir.DirectoryName.ToLower().Replace("\\", "/");
-                        if (!DirPaths.Contains(dp))
+                        if (String.IsNullOrEmpty(dir.DirectoryName))
                         {
-                            af = "/" + dp.Replace(fullPath, "");
+                            continue;
+                        }
+                        dp = dir.DirectoryName.Replace("\\", "/").TrimEnd('/');
+                        // Only folders inside the document root can be mapped to a URL.
+                        if (!DirPaths.Contains(dp.ToLower()) &&
+                            dp.StartsWith(fullPath + "/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            af = dp.Substring(fullPath.Length) + "/";
                             // ... As this one. Sorry. :(
                             WriteFile.WriteLine(tab(tabn) + "$HTTP[\"url\"] =~ \"^" + af + "\" {");
                             tabn++;
@@ -174,10 +196,13 @@ namespace WDS
                 }
                 else if (Globals.Processes.InternalPHP) // CGI.
                 {
-                    WriteFile.WriteLine(tab(tabn) + "cgi.assign = ( \".php\" => \"" + Globals.Servers.PHP.Exe + "\" )");
+                    WriteFile.WriteLine(tab(tabn) + "cgi.assign = ( \".php\" => \"" + (Globals.Servers.PHP.Exe ?? "").Replace('\\', '/') + "\" )");
                 }
 
-                WriteFile.WriteLine("include \"" + this.lighttpdInstallation.Replace("\\", "/") + "conf/variables.conf\"");
+                if (WriteVariablesCopy())
+                {
+                    WriteFile.WriteLine("include \"" + this.lighttpdInstallation.Replace("\\", "/") + "conf/variables-wds.conf\"");
+                }
                 WriteFile.WriteLine("include \"" + this.lighttpdInstallation.Replace("\\", "/") + "conf/mimetype.conf\"");
                 WriteFile.WriteLine("");
 
@@ -185,12 +210,11 @@ namespace WDS
                 {
                     WriteFile.WriteLine(Setting.Param.Replace("\n", Environment.NewLine));
                 }
-
-                WriteFile.Close();
+                }
             }
             catch (Exception ex)
             {
-                Globals.Error.Show(ex.Message);
+                Globals.Error.Show("Unexpected error", ex);
             }
         }
 
@@ -210,6 +234,37 @@ namespace WDS
             return WhatToReturn;
         }
         
+        /// <summary>
+        /// Copies conf\variables.conf to conf\variables-wds.conf without the
+        /// server.bind/server.port lines, which this program writes itself
+        /// (lighttpd refuses a variable set twice). Returns false if there is no variables.conf.
+        /// </summary>
+        private bool WriteVariablesCopy()
+        {
+            String source = this.lighttpdInstallation + @"conf\variables.conf";
+            if (!File.Exists(source))
+            {
+                return false;
+            }
+
+            List<String> lines = new List<String>();
+            foreach (String line in File.ReadAllLines(source))
+            {
+                String t = line.TrimStart();
+                if (t.StartsWith("server.bind", StringComparison.OrdinalIgnoreCase) ||
+                    t.StartsWith("server.port", StringComparison.OrdinalIgnoreCase))
+                {
+                    lines.Add("# (set by Web Development Server) " + line);
+                }
+                else
+                {
+                    lines.Add(line);
+                }
+            }
+            File.WriteAllLines(this.lighttpdInstallation + @"conf\variables-wds.conf", lines.ToArray());
+            return true;
+        }
+
         private string tab(int n)
         {
             return new String('\t', n);

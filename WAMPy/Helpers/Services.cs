@@ -1,61 +1,50 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ServiceProcess;
 
 namespace WDS
 {
     class Services
     {
-        private ServiceController Service = null;
-
-        public String DoesServiceExist(String serviceName, bool IsFullName = false)
+        /// <summary>
+        /// Names of the running Windows services whose name contains the given text.
+        /// These services are never stopped by this program: they belong to other
+        /// installations and stopping them needs administrator rights.
+        /// </summary>
+        public List<String> RunningServices(String partialName)
         {
-            ServiceController[] Services = ServiceController.GetServices();
-            serviceName = serviceName.ToLower();
-
-            // Try to find service name.
-            foreach (ServiceController srvc in Services)
+            List<String> found = new List<String>();
+            ServiceController[] services;
+            try
             {
-                if (IsFullName && srvc.ServiceName == serviceName)
-                {
-                    this.Service = srvc;
-                    return srvc.ServiceName;
-                }
-                else if (srvc.ServiceName.ToLower().Contains(serviceName))
-                {
-                    this.Service = srvc;
-                    return srvc.ServiceName;
-                }
+                services = ServiceController.GetServices();
+            }
+            catch (Exception ex)
+            {
+                Globals.AddToLogFile("Unable to list the Windows services: " + ex);
+                return found;
             }
 
-            return null;
-        }
-
-        public bool StopService()
-        {
-            return this.StopService(this.Service);
-        }
-
-        public bool StopService(ServiceController svc)
-        {
-            if (
-                svc.Status == ServiceControllerStatus.Running ||
-                svc.Status == ServiceControllerStatus.Paused ||
-                svc.Status == ServiceControllerStatus.ContinuePending ||
-                svc.Status == ServiceControllerStatus.StartPending
-            )
+            foreach (ServiceController srvc in services)
             {
-                svc.Stop();
-                return true;
+                try
+                {
+                    if (srvc.ServiceName.IndexOf(partialName, StringComparison.OrdinalIgnoreCase) >= 0 &&
+                        srvc.Status != ServiceControllerStatus.Stopped &&
+                        srvc.Status != ServiceControllerStatus.StopPending)
+                    {
+                        found.Add(srvc.ServiceName);
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                finally
+                {
+                    srvc.Dispose();
+                }
             }
-
-            return false;
-        }
-
-        public bool StopService(String serviceName)
-        {
-            ServiceController svc = new ServiceController(serviceName);
-
-            return this.StopService(svc);
+            return found;
         }
     }
 }

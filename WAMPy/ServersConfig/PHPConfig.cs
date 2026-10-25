@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Reflection;
 
 namespace WDS
 {
@@ -26,51 +25,18 @@ namespace WDS
         public void LoadSettings()
         {
             DataTable SettingsDB = Globals.dbConn.GetDataTable("SELECT * FROM PHPSettings");
-
             foreach (DataRow row in SettingsDB.Rows)
             {
-                PHPSetting Set = new PHPSetting();
-
-                foreach (DataColumn col in SettingsDB.Columns)
-                {
-                    try
-                    {
-                        PropertyInfo pi = Set.GetType().GetProperty(col.ToString());
-                        pi.SetValue(Set, Convert.ChangeType(row[col], pi.PropertyType), null);
-                    }
-                    catch (Exception /*ex*/)
-                    {
-                        //Globals.Error.Show("Column: " + col.ToString() + "\r\nContent: " + row[col].ToString() + "\r\n" + ex.Message);
-                    }
-                }
-
-                Settings.Add(Set);
+                Settings.Add(WebServerConfig.FillFromRow<PHPSetting>(row));
             }
         }
-
 
         public void LoadModules()
         {
             DataTable ModulesDB = Globals.dbConn.GetDataTable("SELECT * FROM PHPModules");
-
             foreach (DataRow row in ModulesDB.Rows)
             {
-                PHPModule Mod = new PHPModule();
-
-                foreach (DataColumn col in ModulesDB.Columns)
-                {
-                    try
-                    {
-                        PropertyInfo pi = Mod.GetType().GetProperty(col.ToString());
-                        pi.SetValue(Mod, Convert.ChangeType(row[col], pi.PropertyType), null);
-                    }
-                    catch (Exception /*ex*/)
-                    {
-                        //Globals.Error.Show("Column: " + col.ToString() + "\r\nContent: " + row[col].ToString() + "\r\n" + ex.Message);
-                    }
-                }
-
-                Modules.Add(Mod);
+                Modules.Add(WebServerConfig.FillFromRow<PHPModule>(row));
             }
 
             LoadModulesDescription();
@@ -78,32 +44,12 @@ namespace WDS
 
         public int FindParam(String Param)
         {
-            int i = 0;
-            foreach (PHPSetting Set in this.Settings)
-            {
-                if (Set.Param == Param)
-                {
-                    return i;
-                }
-                i++;
-            }
-
-            return -1;
+            return this.Settings.FindIndex(s => s.Param == Param);
         }
 
         public int FindModule(String Name)
         {
-            int i = 0;
-            foreach (PHPModule Mod in this.Modules)
-            {
-                if (Mod.Module == Name)
-                {
-                    return i;
-                }
-                i++;
-            }
-
-            return -1;
+            return this.Modules.FindIndex(m => m.Module == Name);
         }
 
         public int SaveSetting(String Param)
@@ -111,78 +57,74 @@ namespace WDS
             return this.SaveSetting(FindParam(Param));
         }
 
+        /// <summary>
+        /// DoWhat: 1 = insert, 2 = update, 3 = delete.
+        /// </summary>
         public int SaveSetting(int index, int DoWhat = 2)
         {
-            String sql = "";
-            switch (DoWhat)
+            if (index < 0 || index >= this.Settings.Count || String.IsNullOrEmpty(this.Settings[index].Param))
             {
-                case 1:
-                    sql = "INSERT INTO PHPSettings ('Active', 'Param', 'Value') VALUES (" + this.Settings[index].Active.ToString() + ", '" + this.Settings[index].Param + "', '" + this.Settings[index].Value + "')";
-                    break;
-                case 2:
-                    if (this.Settings.Count > 0 && index >= 0 && this.Settings[index].Param != "")
-                    {
-                        sql = "UPDATE PHPSettings SET Value = '" + this.Settings[index].Value + "', Active = " + this.Settings[index].Active.ToString() + " WHERE Param LIKE '" + this.Settings[index].Param + "'";
-                    }
-                    break;
-                case 3:
-                    if (this.Settings.Count > 0 && index >= 0 && this.Settings[index].Param != "")
-                    {
-                        sql = "DELETE FROM PHPSettings WHERE Param = '" + this.Settings[index].Param + "'";
-                    }
-                    break;
-                default:
-                    return -1;
+                return -1;
             }
 
+            PHPSetting s = this.Settings[index];
             try
             {
-                return Globals.dbConn.ExecuteNonQuery(sql);
+                switch (DoWhat)
+                {
+                    case 1:
+                        return Globals.dbConn.ExecuteNonQuery("INSERT INTO PHPSettings (Active, Param, Value) VALUES (@p0, @p1, @p2)", s.Active, s.Param, s.Value);
+                    case 2:
+                        return Globals.dbConn.ExecuteNonQuery("UPDATE PHPSettings SET Value = @p0, Active = @p1 WHERE Param = @p2", s.Value, s.Active, s.Param);
+                    case 3:
+                        return Globals.dbConn.ExecuteNonQuery("DELETE FROM PHPSettings WHERE Param = @p0", s.Param);
+                    default:
+                        return -1;
+                }
             }
             catch (Exception ex)
             {
-                Globals.Error.Show(ex.Message);
+                Globals.Error.Show("Unexpected error", ex);
                 return 0;
             }
         }
 
+        /// <summary>
+        /// DoWhat: 1 = insert, 2 = update, 3 = delete.
+        /// </summary>
         public int SaveModuleData(int index, int DoWhat = 2)
         {
-            if (!String.IsNullOrEmpty(this.Modules[index].Module))
+            if (index < 0 || index >= this.Modules.Count || String.IsNullOrEmpty(this.Modules[index].Module))
             {
-                String sql = "";
+                return 0;
+            }
+
+            PHPModule m = this.Modules[index];
+            try
+            {
                 switch (DoWhat)
                 {
                     case 1:
-                        sql = "INSERT INTO PHPModules ('Module', 'Value') VALUES ('" + this.Modules[index].Module + "', '" + this.Modules[index].Value + "')";
-                        break;
+                        return Globals.dbConn.ExecuteNonQuery("INSERT INTO PHPModules (Module, Value) VALUES (@p0, @p1)", m.Module, m.Value);
                     case 2:
-                        sql = "UPDATE PHPModules SET Value = '" + this.Modules[index].Value + "' WHERE Module LIKE '" + this.Modules[index].Module + "'";
-                        break;
+                        return Globals.dbConn.ExecuteNonQuery("UPDATE PHPModules SET Value = @p0 WHERE Module = @p1", m.Value, m.Module);
                     case 3:
-                        sql = "DELETE FROM PHPModules WHERE Module = '" + this.Modules[index].Module + "'";
-                        break;
+                        return Globals.dbConn.ExecuteNonQuery("DELETE FROM PHPModules WHERE Module = @p0", m.Module);
                     default:
                         return -1;
                 }
-
-                try
-                {
-                    return Globals.dbConn.ExecuteNonQuery(sql);
-                }
-                catch (Exception ex)
-                {
-                    Globals.Error.Show(ex.Message);
-                }
             }
-
-            return 0;
+            catch (Exception ex)
+            {
+                Globals.Error.Show("Unexpected error", ex);
+                return 0;
+            }
         }
 
         public void ClearConfig()
         {
             String[] SQLArray = {
-                           "DELETE FROM ActiveModules  WHERE ServerType LIKE 'PHP'",
+                           "DELETE FROM ActiveModules WHERE ServerType = 'PHP'",
                            "UPDATE PHPSettings SET Active = 0",
                            "DELETE FROM PHPModules"
                        };
@@ -193,28 +135,27 @@ namespace WDS
             }
             catch (Exception e)
             {
-                Globals.Error.Show(e.Message);
+                Globals.Error.Show("Unexpected error", e);
             }
         }
 
         public void SetDefaultConfig()
         {
+            // Optional extra settings; php.ini gets the required ones anyway (PHPConfigFile).
             String ConfigFile = Globals.AppFolder + @"extras\default\PHP.txt";
-            if (!System.IO.File.Exists(ConfigFile))
-            {
-                Globals.Error.Show("The default config data file for this server doesn't exist.\r\nCan't set a new configuration.");
-                return;
-            }
 
             ClearConfig();
-            String SQLBulk = System.IO.File.ReadAllText(ConfigFile);
+            if (!System.IO.File.Exists(ConfigFile))
+            {
+                return;
+            }
             try
             {
-                Globals.dbConn.ExecuteNonQuery(SQLBulk);
+                Globals.dbConn.ExecuteNonQuery(System.IO.File.ReadAllText(ConfigFile));
             }
             catch (Exception e)
             {
-                Globals.Error.Show(e.Message);
+                Globals.Error.Show("Unexpected error", e);
             }
         }
     }

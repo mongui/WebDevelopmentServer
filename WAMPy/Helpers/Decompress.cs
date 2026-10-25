@@ -1,153 +1,179 @@
-﻿using Ionic.Zip;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 
 namespace WDS
 {
     class Decompress
     {
-        public static ZipFile zip = null;
+        // Executables that mark the root folder of a server inside an extracted package.
+        private static readonly String[] KnownExecutables = {
+            "httpd.exe", "apache.exe", "nginx.exe", "lighttpd.exe", "node.exe", "iisexpress.exe",
+            "php-cgi.exe", "php.exe", "mysqld.exe", "mariadbd.exe"
+        };
 
-        public static void ExtractZip(String Target, String FullFile, bool Overwrite = false)
+        /// <summary>
+        /// Extracts Target\FullFile into Target\[file name without .zip].
+        /// If the zip holds a single folder, that folder becomes the target folder.
+        /// Returns false if something failed.
+        /// </summary>
+        public static bool ExtractZip(String Target, String FullFile, bool Overwrite = false)
         {
-            String FileName = FullFile.Replace(".zip", "");
-            if (Directory.Exists(Target + FileName))
+            String FileName = Path.GetFileNameWithoutExtension(FullFile);
+            String Destination = Path.Combine(Target, FileName);
+            String TempDir = Path.Combine(Target, "temp");
+
+            try
             {
-                Directory.Delete(Target + FileName, true);
-            }
-
-            String TempDir = Target + @"temp\";
-            if (Directory.Exists(TempDir))
-            {
-                Directory.Delete(TempDir, true);
-            }
-            Directory.CreateDirectory(TempDir);
-
-            using (zip = ZipFile.Read(Target + FullFile))
-            {
-                if (Overwrite)
+                if (Directory.Exists(Destination))
                 {
-                    zip.ExtractExistingFile = ExtractExistingFileAction.OverwriteSilently;
-                }
-
-                try
-                {
-                    zip.ExtractAll(TempDir);
-                }
-                catch (Exception ex)
-                {
-                    Globals.Error.Show(ex.Message);
-                }
-                
-                String[] DirContent1 = Directory.GetFiles(TempDir);
-                String[] DirContent2 = Directory.GetDirectories(TempDir);
-
-                if (DirContent2.Length == 1 && DirContent1.Length == 0)
-                {
-                    Directory.Move(DirContent2[0], Target + FileName);
-                }
-                else
-                {
-                    Directory.Move(TempDir, Target + FileName + @"\");
+                    if (!Overwrite)
+                    {
+                        Globals.Error.Show("The folder " + Destination + " already exists.");
+                        return false;
+                    }
+                    Directory.Delete(Destination, true);
                 }
 
                 if (Directory.Exists(TempDir))
                 {
                     Directory.Delete(TempDir, true);
                 }
-            }
-        }
+                Directory.CreateDirectory(TempDir);
+                String TempRoot = Path.GetFullPath(TempDir) + Path.DirectorySeparatorChar;
 
-        public static void ExtractMsi(String Target, String FileName)
-        {
-            String TempDir = Target + @"temp\";
-            if (Directory.Exists(TempDir))
-            {
-                Directory.Delete(TempDir, true);
-            }
-            Directory.CreateDirectory(TempDir);
-
-            try
-            {
-                System.Diagnostics.Process process = new System.Diagnostics.Process();
-                process.StartInfo.FileName = "msiexec";
-                process.StartInfo.Arguments = "/a \"" + Target + FileName + "\" /qb- TARGETDIR=\"" + TempDir + "\"";
-
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.Start();
-                process.WaitForExit();
-            }
-            catch (Exception ex)
-            {
-                Globals.Error.Show(ex.Message);
-            }
-            
-            WebServerPaths.Add(new DirectoryInfo(TempDir));
-            FindWebServerTempPath();
-            
-            try
-            {
-                if (Directory.Exists(FoundWebServerPath))
+                using (ZipArchive zip = ZipFile.OpenRead(Path.Combine(Target, FullFile)))
                 {
-                    String newTarget = Target + FileName.Replace(".msi", "");
-                    Directory.Move(FoundWebServerPath, newTarget);
+                    foreach (ZipArchiveEntry entry in zip.Entries)
+                    {
+                        String outPath = Path.GetFullPath(Path.Combine(TempDir, entry.FullName));
+
+                        // Refuse entries that would be written outside the temp folder ("zip slip").
+                        if (!outPath.StartsWith(TempRoot, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidDataException("The package contains an invalid path: " + entry.FullName);
+                        }
+
+                        if (String.IsNullOrEmpty(entry.Name))
+                        {
+                            Directory.CreateDirectory(outPath);
+                            continue;
+                        }
+
+                        Directory.CreateDirectory(Path.GetDirectoryName(outPath));
+                        entry.ExtractToFile(outPath, true);
+                    }
+                }
+
+                String[] Files = Directory.GetFiles(TempDir);
+                String[] Dirs = Directory.GetDirectories(TempDir);
+
+                if (Dirs.Length == 1 && Files.Length == 0)
+                {
+                    Directory.Move(Dirs[0], Destination);
                     Directory.Delete(TempDir, true);
                 }
+                else
+                {
+                    Directory.Move(TempDir, Destination);
+                }
+                return true;
             }
             catch (Exception ex)
             {
-                Globals.Error.Show(ex.Message);
+                Globals.Error.Show("Unable to extract " + FullFile + "", ex);
+                try
+                {
+                    if (Directory.Exists(TempDir)) Directory.Delete(TempDir, true);
+                }
+                catch (Exception) { }
+                return false;
             }
         }
 
-        private static List<DirectoryInfo> WebServerPaths = new List<DirectoryInfo>();
-        private static String FoundWebServerPath;
-        public static void FindWebServerTempPath()
+        /// <summary>
+        /// Extracts an .msi package (administrative install) into Target\[file name without .msi].
+        /// </summary>
+        public static bool ExtractMsi(String Target, String FileName)
         {
-            if (WebServerPaths.Count <= 0)
+            String TempDir = Path.Combine(Target, "temp");
+            try
             {
-                return;
-            }
-
-            DirectoryInfo Find;
-            using (var iter = WebServerPaths.GetEnumerator())
-            {
-                iter.MoveNext();
-                Find = iter.Current;
-            }
-
-            IList<String> availableFiles = Globals.Servers.WebServer.AvailableFiles;
-            bool foundFile = false;
-
-            foreach (FileInfo fileName in Find.GetFiles())
-            {
-                if (availableFiles.Contains(fileName.ToString()))
+                if (Directory.Exists(TempDir))
                 {
-                    FoundWebServerPath = Find.FullName.ToString();
-                    WebServerPaths.Clear();
-                    foundFile = true;
+                    Directory.Delete(TempDir, true);
                 }
-            }
+                Directory.CreateDirectory(TempDir);
 
-            if (!foundFile)
-            {
-                foreach (DirectoryInfo subDirectory in Find.GetDirectories())
+                using (System.Diagnostics.Process process = new System.Diagnostics.Process())
                 {
-                    if (subDirectory.ToString() == "bin")
+                    process.StartInfo.FileName = "msiexec";
+                    process.StartInfo.Arguments = "/a \"" + Path.Combine(Target, FileName) + "\" /qb- TARGETDIR=\"" + TempDir + "\"";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                    process.WaitForExit();
+                }
+
+                String found = FindServerRoot(new DirectoryInfo(TempDir));
+                if (found == null)
+                {
+                    Globals.Error.Show("No server executable was found inside " + FileName + ".");
+                    Directory.Delete(TempDir, true);
+                    return false;
+                }
+
+                String newTarget = Path.Combine(Target, Path.GetFileNameWithoutExtension(FileName));
+                if (Directory.Exists(newTarget))
+                {
+                    Directory.Delete(newTarget, true);
+                }
+                Directory.Move(found, newTarget);
+                if (Directory.Exists(TempDir))
+                {
+                    Directory.Delete(TempDir, true);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Globals.Error.Show("Unable to extract " + FileName + "", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Breadth-first search for the folder that holds a server executable
+        /// (or the parent of a "bin" folder).
+        /// </summary>
+        private static String FindServerRoot(DirectoryInfo start)
+        {
+            Queue<DirectoryInfo> pending = new Queue<DirectoryInfo>();
+            pending.Enqueue(start);
+
+            while (pending.Count > 0)
+            {
+                DirectoryInfo dir = pending.Dequeue();
+
+                foreach (FileInfo file in dir.GetFiles())
+                {
+                    if (Array.IndexOf(KnownExecutables, file.Name.ToLowerInvariant()) >= 0)
                     {
-                        FoundWebServerPath = Find.FullName.ToString();
-                        WebServerPaths.Clear();
-                        return;
+                        return dir.FullName;
                     }
-                    WebServerPaths.Add(subDirectory);
+                }
+
+                foreach (DirectoryInfo sub in dir.GetDirectories())
+                {
+                    if (String.Equals(sub.Name, "bin", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return dir.FullName;
+                    }
+                    pending.Enqueue(sub);
                 }
             }
-            WebServerPaths.Remove(Find);
-            FindWebServerTempPath();
+            return null;
         }
     }
 }

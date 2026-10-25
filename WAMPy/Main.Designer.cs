@@ -57,6 +57,12 @@
             this.pictureWebServer = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
             this.tabWebServer = new System.Windows.Forms.TabPage();
+            this.WebServerInfoBox = new System.Windows.Forms.GroupBox();
+            this.bInfoWSFiles = new System.Windows.Forms.Button();
+            this.InfoWSArch = new System.Windows.Forms.Label();
+            this.tInfoWSArch = new System.Windows.Forms.Label();
+            this.InfoWSVer = new System.Windows.Forms.Label();
+            this.tInfoWSVer = new System.Windows.Forms.Label();
             this.WebServerConfigBox = new System.Windows.Forms.GroupBox();
             this.buttonWebServerVersion = new System.Windows.Forms.Button();
             this.buttonInstallWebServer = new System.Windows.Forms.Button();
@@ -64,12 +70,10 @@
             this.comboWebServerVersion = new System.Windows.Forms.ComboBox();
             this.checkWebServer = new System.Windows.Forms.CheckBox();
             this.tabPHP = new System.Windows.Forms.TabPage();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.PHPInfoBox = new System.Windows.Forms.GroupBox();
             this.bInfoPHPFiles = new System.Windows.Forms.Button();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
+            this.InfoPHPArch = new System.Windows.Forms.Label();
+            this.tInfoPHPArch = new System.Windows.Forms.Label();
             this.InfoPHPVer = new System.Windows.Forms.Label();
             this.tInfoPHPVer = new System.Windows.Forms.Label();
             this.PHPConfigBox = new System.Windows.Forms.GroupBox();
@@ -92,10 +96,15 @@
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.NotifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.bWizard = new System.Windows.Forms.Button();
-            this.contextMenuFileOpener = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.asdfasToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.PHPFileOpener = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.PHPErrorLogMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
-            this.phpiniToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.PHPIniMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.WSFileOpener = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.WSIniMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.WSAccessLogMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.WSErrorLogMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.TabList.SuspendLayout();
             this.tabStart.SuspendLayout();
             this.StartNetworkBox.SuspendLayout();
@@ -104,15 +113,17 @@
             ((System.ComponentModel.ISupportInitialize)(this.picturePHP)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureWebServer)).BeginInit();
             this.tabWebServer.SuspendLayout();
+            this.WebServerInfoBox.SuspendLayout();
             this.WebServerConfigBox.SuspendLayout();
             this.tabPHP.SuspendLayout();
-            this.groupBox1.SuspendLayout();
+            this.PHPInfoBox.SuspendLayout();
             this.PHPConfigBox.SuspendLayout();
             this.tabDatabase.SuspendLayout();
             this.DataBaseConfigBox.SuspendLayout();
             this.tabAbout.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.contextMenuFileOpener.SuspendLayout();
+            this.PHPFileOpener.SuspendLayout();
+            this.WSFileOpener.SuspendLayout();
             this.SuspendLayout();
             // 
             // bMinimize
@@ -403,6 +414,7 @@
             // 
             // tabWebServer
             // 
+            this.tabWebServer.Controls.Add(this.WebServerInfoBox);
             this.tabWebServer.Controls.Add(this.WebServerConfigBox);
             this.tabWebServer.ImageKey = "grey";
             this.tabWebServer.Location = new System.Drawing.Point(4, 27);
@@ -412,6 +424,68 @@
             this.tabWebServer.TabIndex = 1;
             this.tabWebServer.Text = "Web Server";
             this.tabWebServer.UseVisualStyleBackColor = true;
+            // 
+            // WebServerInfoBox
+            // 
+            this.WebServerInfoBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.WebServerInfoBox.Controls.Add(this.bInfoWSFiles);
+            this.WebServerInfoBox.Controls.Add(this.InfoWSArch);
+            this.WebServerInfoBox.Controls.Add(this.tInfoWSArch);
+            this.WebServerInfoBox.Controls.Add(this.InfoWSVer);
+            this.WebServerInfoBox.Controls.Add(this.tInfoWSVer);
+            this.WebServerInfoBox.Location = new System.Drawing.Point(6, 171);
+            this.WebServerInfoBox.Name = "WebServerInfoBox";
+            this.WebServerInfoBox.Size = new System.Drawing.Size(437, 158);
+            this.WebServerInfoBox.TabIndex = 5;
+            this.WebServerInfoBox.TabStop = false;
+            this.WebServerInfoBox.Text = "Apache Info";
+            // 
+            // bInfoWSFiles
+            // 
+            this.bInfoWSFiles.Image = ((System.Drawing.Image)(resources.GetObject("bInfoWSFiles.Image")));
+            this.bInfoWSFiles.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.bInfoWSFiles.Location = new System.Drawing.Point(10, 98);
+            this.bInfoWSFiles.Name = "bInfoWSFiles";
+            this.bInfoWSFiles.Size = new System.Drawing.Size(124, 23);
+            this.bInfoWSFiles.TabIndex = 6;
+            this.bInfoWSFiles.Text = "Access files";
+            this.bInfoWSFiles.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.bInfoWSFiles.TextImageRelation = System.Windows.Forms.TextImageRelation.TextBeforeImage;
+            this.bInfoWSFiles.UseVisualStyleBackColor = true;
+            // 
+            // InfoWSArch
+            // 
+            this.InfoWSArch.Location = new System.Drawing.Point(335, 23);
+            this.InfoWSArch.Name = "InfoWSArch";
+            this.InfoWSArch.Size = new System.Drawing.Size(56, 18);
+            this.InfoWSArch.TabIndex = 3;
+            this.InfoWSArch.Text = "0 bits";
+            // 
+            // tInfoWSArch
+            // 
+            this.tInfoWSArch.Location = new System.Drawing.Point(236, 23);
+            this.tInfoWSArch.Name = "tInfoWSArch";
+            this.tInfoWSArch.Size = new System.Drawing.Size(91, 18);
+            this.tInfoWSArch.TabIndex = 2;
+            this.tInfoWSArch.Text = "Architecture:";
+            // 
+            // InfoWSVer
+            // 
+            this.InfoWSVer.Location = new System.Drawing.Point(133, 23);
+            this.InfoWSVer.Name = "InfoWSVer";
+            this.InfoWSVer.Size = new System.Drawing.Size(56, 18);
+            this.InfoWSVer.TabIndex = 1;
+            this.InfoWSVer.Text = "0.0.0";
+            // 
+            // tInfoWSVer
+            // 
+            this.tInfoWSVer.Location = new System.Drawing.Point(34, 23);
+            this.tInfoWSVer.Name = "tInfoWSVer";
+            this.tInfoWSVer.Size = new System.Drawing.Size(91, 18);
+            this.tInfoWSVer.TabIndex = 0;
+            this.tInfoWSVer.Text = "Server Version:";
             // 
             // WebServerConfigBox
             // 
@@ -481,7 +555,7 @@
             // 
             // tabPHP
             // 
-            this.tabPHP.Controls.Add(this.groupBox1);
+            this.tabPHP.Controls.Add(this.PHPInfoBox);
             this.tabPHP.Controls.Add(this.PHPConfigBox);
             this.tabPHP.ImageKey = "grey";
             this.tabPHP.Location = new System.Drawing.Point(4, 27);
@@ -491,24 +565,22 @@
             this.tabPHP.Text = "PHP";
             this.tabPHP.UseVisualStyleBackColor = true;
             // 
-            // groupBox1
+            // PHPInfoBox
             // 
-            this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            this.PHPInfoBox.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.groupBox1.Controls.Add(this.bInfoPHPFiles);
-            this.groupBox1.Controls.Add(this.label5);
-            this.groupBox1.Controls.Add(this.label7);
-            this.groupBox1.Controls.Add(this.label2);
-            this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Controls.Add(this.InfoPHPVer);
-            this.groupBox1.Controls.Add(this.tInfoPHPVer);
-            this.groupBox1.Location = new System.Drawing.Point(7, 171);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(437, 158);
-            this.groupBox1.TabIndex = 2;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "groupBox1";
+            this.PHPInfoBox.Controls.Add(this.bInfoPHPFiles);
+            this.PHPInfoBox.Controls.Add(this.InfoPHPArch);
+            this.PHPInfoBox.Controls.Add(this.tInfoPHPArch);
+            this.PHPInfoBox.Controls.Add(this.InfoPHPVer);
+            this.PHPInfoBox.Controls.Add(this.tInfoPHPVer);
+            this.PHPInfoBox.Location = new System.Drawing.Point(6, 171);
+            this.PHPInfoBox.Name = "PHPInfoBox";
+            this.PHPInfoBox.Size = new System.Drawing.Size(437, 158);
+            this.PHPInfoBox.TabIndex = 2;
+            this.PHPInfoBox.TabStop = false;
+            this.PHPInfoBox.Text = "Plugin Info";
             // 
             // bInfoPHPFiles
             // 
@@ -524,51 +596,35 @@
             this.bInfoPHPFiles.UseVisualStyleBackColor = true;
             this.bInfoPHPFiles.Click += new System.EventHandler(this.bInfoPHPFiles_Click);
             // 
-            // label5
+            // InfoPHPArch
             // 
-            this.label5.Location = new System.Drawing.Point(90, 76);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(44, 18);
-            this.label5.TabIndex = 5;
-            this.label5.Text = "VC11";
+            this.InfoPHPArch.Location = new System.Drawing.Point(335, 23);
+            this.InfoPHPArch.Name = "InfoPHPArch";
+            this.InfoPHPArch.Size = new System.Drawing.Size(56, 18);
+            this.InfoPHPArch.TabIndex = 3;
+            this.InfoPHPArch.Text = "0 bits";
             // 
-            // label7
+            // tInfoPHPArch
             // 
-            this.label7.Location = new System.Drawing.Point(7, 76);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(77, 18);
-            this.label7.TabIndex = 4;
-            this.label7.Text = "Compiler:";
-            // 
-            // label2
-            // 
-            this.label2.Location = new System.Drawing.Point(90, 53);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(44, 18);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "64 bits";
-            // 
-            // label3
-            // 
-            this.label3.Location = new System.Drawing.Point(7, 53);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(77, 18);
-            this.label3.TabIndex = 2;
-            this.label3.Text = "Architecture:";
+            this.tInfoPHPArch.Location = new System.Drawing.Point(236, 23);
+            this.tInfoPHPArch.Name = "tInfoPHPArch";
+            this.tInfoPHPArch.Size = new System.Drawing.Size(91, 18);
+            this.tInfoPHPArch.TabIndex = 2;
+            this.tInfoPHPArch.Text = "Architecture:";
             // 
             // InfoPHPVer
             // 
-            this.InfoPHPVer.Location = new System.Drawing.Point(90, 30);
+            this.InfoPHPVer.Location = new System.Drawing.Point(133, 23);
             this.InfoPHPVer.Name = "InfoPHPVer";
-            this.InfoPHPVer.Size = new System.Drawing.Size(44, 18);
+            this.InfoPHPVer.Size = new System.Drawing.Size(56, 18);
             this.InfoPHPVer.TabIndex = 1;
-            this.InfoPHPVer.Text = "5.5.1";
+            this.InfoPHPVer.Text = "0.0.0";
             // 
             // tInfoPHPVer
             // 
-            this.tInfoPHPVer.Location = new System.Drawing.Point(7, 30);
+            this.tInfoPHPVer.Location = new System.Drawing.Point(34, 23);
             this.tInfoPHPVer.Name = "tInfoPHPVer";
-            this.tInfoPHPVer.Size = new System.Drawing.Size(77, 18);
+            this.tInfoPHPVer.Size = new System.Drawing.Size(91, 18);
             this.tInfoPHPVer.TabIndex = 0;
             this.tInfoPHPVer.Text = "PHP Version:";
             // 
@@ -788,31 +844,64 @@
             this.bWizard.UseVisualStyleBackColor = true;
             this.bWizard.MouseClick += new System.Windows.Forms.MouseEventHandler(this.bWizard_Click);
             // 
-            // contextMenuFileOpener
+            // PHPFileOpener
             // 
-            this.contextMenuFileOpener.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.asdfasToolStripMenuItem,
+            this.PHPFileOpener.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.PHPIniMenuItem,
             this.toolStripMenuItem1,
-            this.phpiniToolStripMenuItem});
-            this.contextMenuFileOpener.Name = "contextMenuFileOpener";
-            this.contextMenuFileOpener.Size = new System.Drawing.Size(153, 76);
+            this.PHPErrorLogMenuItem});
+            this.PHPFileOpener.Name = "contextMenuFileOpener";
+            this.PHPFileOpener.Size = new System.Drawing.Size(122, 54);
             // 
-            // asdfasToolStripMenuItem
+            // PHPErrorLogMenuItem
             // 
-            this.asdfasToolStripMenuItem.Name = "asdfasToolStripMenuItem";
-            this.asdfasToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.asdfasToolStripMenuItem.Text = "error_log";
+            this.PHPErrorLogMenuItem.Name = "PHPErrorLogMenuItem";
+            this.PHPErrorLogMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.PHPErrorLogMenuItem.Text = "error_log";
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(149, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(118, 6);
             // 
-            // phpiniToolStripMenuItem
+            // PHPIniMenuItem
             // 
-            this.phpiniToolStripMenuItem.Name = "phpiniToolStripMenuItem";
-            this.phpiniToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.phpiniToolStripMenuItem.Text = "php.ini";
+            this.PHPIniMenuItem.Name = "PHPIniMenuItem";
+            this.PHPIniMenuItem.Size = new System.Drawing.Size(121, 22);
+            this.PHPIniMenuItem.Text = "php.ini";
+            // 
+            // WSFileOpener
+            // 
+            this.WSFileOpener.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.WSIniMenuItem,
+            this.toolStripSeparator1,
+            this.WSAccessLogMenuItem,
+            this.WSErrorLogMenuItem});
+            this.WSFileOpener.Name = "contextMenuFileOpener";
+            this.WSFileOpener.Size = new System.Drawing.Size(174, 76);
+            // 
+            // WSIniMenuItem
+            // 
+            this.WSIniMenuItem.Name = "WSIniMenuItem";
+            this.WSIniMenuItem.Size = new System.Drawing.Size(173, 22);
+            this.WSIniMenuItem.Text = "apache/httpd.conf";
+            // 
+            // toolStripSeparator1
+            // 
+            this.toolStripSeparator1.Name = "toolStripSeparator1";
+            this.toolStripSeparator1.Size = new System.Drawing.Size(170, 6);
+            // 
+            // WSAccessLogMenuItem
+            // 
+            this.WSAccessLogMenuItem.Name = "WSAccessLogMenuItem";
+            this.WSAccessLogMenuItem.Size = new System.Drawing.Size(173, 22);
+            this.WSAccessLogMenuItem.Text = "access_log";
+            // 
+            // WSErrorLogMenuItem
+            // 
+            this.WSErrorLogMenuItem.Name = "WSErrorLogMenuItem";
+            this.WSErrorLogMenuItem.Size = new System.Drawing.Size(173, 22);
+            this.WSErrorLogMenuItem.Text = "error_log";
             // 
             // Main
             // 
@@ -843,10 +932,11 @@
             ((System.ComponentModel.ISupportInitialize)(this.picturePHP)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureWebServer)).EndInit();
             this.tabWebServer.ResumeLayout(false);
+            this.WebServerInfoBox.ResumeLayout(false);
             this.WebServerConfigBox.ResumeLayout(false);
             this.WebServerConfigBox.PerformLayout();
             this.tabPHP.ResumeLayout(false);
-            this.groupBox1.ResumeLayout(false);
+            this.PHPInfoBox.ResumeLayout(false);
             this.PHPConfigBox.ResumeLayout(false);
             this.PHPConfigBox.PerformLayout();
             this.tabDatabase.ResumeLayout(false);
@@ -855,7 +945,8 @@
             this.tabAbout.ResumeLayout(false);
             this.tabAbout.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.contextMenuFileOpener.ResumeLayout(false);
+            this.PHPFileOpener.ResumeLayout(false);
+            this.WSFileOpener.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -915,19 +1006,28 @@
         private System.Windows.Forms.ListBox LogList;
         private System.Windows.Forms.Label Uptime;
         private System.Windows.Forms.Label tUptime;
-        private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox PHPInfoBox;
         private System.Windows.Forms.Button bWizard;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Label InfoPHPArch;
+        private System.Windows.Forms.Label tInfoPHPArch;
         private System.Windows.Forms.Label InfoPHPVer;
         private System.Windows.Forms.Label tInfoPHPVer;
-        private System.Windows.Forms.ContextMenuStrip contextMenuFileOpener;
-        private System.Windows.Forms.ToolStripMenuItem asdfasToolStripMenuItem;
+        private System.Windows.Forms.ContextMenuStrip PHPFileOpener;
+        private System.Windows.Forms.ToolStripMenuItem PHPErrorLogMenuItem;
         private System.Windows.Forms.Button bInfoPHPFiles;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
-        private System.Windows.Forms.ToolStripMenuItem phpiniToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem PHPIniMenuItem;
+        private System.Windows.Forms.GroupBox WebServerInfoBox;
+        private System.Windows.Forms.Button bInfoWSFiles;
+        private System.Windows.Forms.Label InfoWSArch;
+        private System.Windows.Forms.Label tInfoWSArch;
+        private System.Windows.Forms.Label InfoWSVer;
+        private System.Windows.Forms.Label tInfoWSVer;
+        private System.Windows.Forms.ContextMenuStrip WSFileOpener;
+        private System.Windows.Forms.ToolStripMenuItem WSIniMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private System.Windows.Forms.ToolStripMenuItem WSAccessLogMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem WSErrorLogMenuItem;
 
     }
 }

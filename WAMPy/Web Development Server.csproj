@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WDS</RootNamespace>
     <AssemblyName>Web Development Server</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <TargetFrameworkProfile />
@@ -24,7 +24,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationVersion>1.5.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
@@ -71,28 +71,26 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Ionic.Zip">
-      <HintPath>..\..\..\..\..\Desktop\WAMPy\Ionic.Zip.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.SQLite">
-      <HintPath>..\packages\System.Data.SQLite.1.0.90.0\lib\net20\System.Data.SQLite.dll</HintPath>
+      <HintPath>..\packages\System.Data.SQLite.1.0.90.0\lib\net451\System.Data.SQLite.dll</HintPath>
     </Reference>
-    <Reference Include="System.Data.SQLite.Linq">
-      <HintPath>..\packages\System.Data.SQLite.1.0.90.0\lib\net20\System.Data.SQLite.Linq.dll</HintPath>
-    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="wix">
-      <HintPath>..\..\..\..\..\Desktop\WAMPy\lessmsi\wix.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Helpers\Config.cs" />
+    <Compile Include="ServersConfig\Compatibility.cs" />
+    <Compile Include="ServersConfig\CompatibilityWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Helpers\Decompress.cs" />
     <Compile Include="Helpers\DataBaseFiles.cs" />
     <Compile Include="Helpers\Services.cs" />
@@ -140,7 +138,6 @@
     <Compile Include="ServersConfig\ServerConfigFiles\lighttpdConfigFile.cs" />
     <Compile Include="ServersConfig\ServerConfigFiles\MySQLConfigFile.cs" />
     <Compile Include="ServersConfig\ServerConfigFiles\nginxConfigFile.cs" />
-    <Compile Include="ServersConfig\ServerConfigFiles\nodeJSConfigFile.cs" />
     <Compile Include="ServersConfig\ServerConfigFiles\PHPConfigFile.cs" />
     <Compile Include="ServersConfig\WebServerConfigWindow.cs">
       <SubType>Form</SubType>
@@ -223,6 +220,9 @@
     </EmbeddedResource>
     <None Include="app.config" />
     <None Include="packages.config" />
+    <Content Include="servers.db">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -236,14 +236,9 @@
     <None Include="Web Development Server_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+    <BootstrapperPackage Include="Microsoft.Net.Framework.4.8.1">
       <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <ProductName>.NET Framework 4.8.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
@@ -261,11 +256,13 @@
     <None Include="Resources\downArrow.png" />
     <None Include="Resources\downArrow.gif" />
     <Content Include="Server.ico" />
-    <Content Include="x64\SQLite.Interop.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="..\packages\System.Data.SQLite.1.0.90.0\content\net451\x64\SQLite.Interop.dll">
+      <Link>x64\SQLite.Interop.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="x86\SQLite.Interop.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <Content Include="..\packages\System.Data.SQLite.1.0.90.0\content\net451\x86\SQLite.Interop.dll">
+      <Link>x86\SQLite.Interop.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <None Include="Resources\web_server.png" />
     <None Include="Resources\red.png" />

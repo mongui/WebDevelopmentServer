@@ -66,35 +66,45 @@ namespace WDS
 
             try
             {
-                StreamWriter WriteFile = new StreamWriter(this.nginxInstallation + @"conf\nginx.conf");
+                using (StreamWriter WriteFile = new StreamWriter(this.nginxInstallation + @"conf\nginx.conf"))
+                {
 
                 foreach (String cs in this.GetFileSection(""))
                 {
                     WriteFile.WriteLine(cs.Replace("\n", Environment.NewLine));
                 }
 
+                // nginx refuses to start without an events block.
                 String[] data = this.GetFileSection("events");
-                if (data.Length > 0)
+                WriteFile.WriteLine();
+                WriteFile.WriteLine("events {");
+                tabn++;
+                if (data.Length == 0)
                 {
-                    WriteFile.WriteLine();
-                    WriteFile.WriteLine("events {");
-                    tabn++;
-                    foreach (String cs in data)
-                    {
-                        WriteFile.WriteLine(tab(tabn) + cs.Replace("\n", Environment.NewLine));
-                    }
-                    tabn--;
-                    WriteFile.WriteLine("}");
+                    WriteFile.WriteLine(tab(tabn) + "worker_connections 1024;");
                 }
+                foreach (String cs in data)
+                {
+                    WriteFile.WriteLine(tab(tabn) + cs.Replace("\n", Environment.NewLine));
+                }
+                tabn--;
+                WriteFile.WriteLine("}");
 
                 WriteFile.WriteLine();
                 WriteFile.WriteLine("http {");
                 tabn++;
 
                 data = this.GetFileSection("http");
+                bool hasTypes = false;
                 foreach (String cs in data)
                 {
+                    if (cs.TrimStart().StartsWith("include mime.types") || cs.TrimStart().StartsWith("types")) hasTypes = true;
                     WriteFile.WriteLine(tab(tabn) + cs.Replace("\n", Environment.NewLine));
+                }
+                if (!hasTypes && File.Exists(this.nginxInstallation + @"conf\mime.types"))
+                {
+                    WriteFile.WriteLine(tab(tabn) + "include mime.types;");
+                    WriteFile.WriteLine(tab(tabn) + "default_type application/octet-stream;");
                 }
 
                 if (Globals.VHosts.Count > 0)
@@ -103,14 +113,20 @@ namespace WDS
 
                     foreach (VirtualHost vh in Globals.VHosts)
                     {
-                        fullPath = Path.Combine(this.nginxInstallation, vh.DocumentRoot);
-                        fullPath = Path.GetFullPath((new Uri(fullPath)).LocalPath).Replace('\\', '/').ToLower();
+                        if (!WebServerConfig.IsValidPort(vh.Port) || String.IsNullOrEmpty(vh.DocumentRoot))
+                        {
+                            Globals.AddToLog("Virtual server '" + vh.ServerName + "' skipped: invalid port or empty document root.");
+                            continue;
+                        }
+
+                        fullPath = Path.GetFullPath(Path.Combine(this.nginxInstallation, vh.DocumentRoot)).Replace('\\', '/').TrimEnd('/');
+                        bool anyIP = String.IsNullOrEmpty(vh.IP) || vh.IP == "*";
 
                         WriteFile.WriteLine(tab(tabn) + "server {");
                         tabn++;
-                        WriteFile.WriteLine(tab(tabn) + "listen " + vh.Port + ";");
-                        if (vh.ServerName != "") { WriteFile.WriteLine(tab(tabn) + "server_name " + vh.ServerName + ";"); }
-                        else if (vh.ServerAlias != "") { WriteFile.WriteLine(tab(tabn) + "server_name " + vh.ServerAlias + ";"); }
+                        WriteFile.WriteLine(tab(tabn) + "listen " + (anyIP ? "" : vh.IP + ":") + vh.Port + ";");
+                        if (!String.IsNullOrEmpty(vh.ServerName)) { WriteFile.WriteLine(tab(tabn) + "server_name " + vh.ServerName + ";"); }
+                        else if (!String.IsNullOrEmpty(vh.ServerAlias)) { WriteFile.WriteLine(tab(tabn) + "server_name " + vh.ServerAlias + ";"); }
                         WriteFile.WriteLine(tab(tabn) + "index " + ((this.PHPcgi) ? "index.php " : "") + "index.html index.htm;");
                         WriteFile.WriteLine();
                         WriteFile.WriteLine(tab(tabn) + "location / {");
@@ -133,6 +149,10 @@ namespace WDS
                         String an;
                         foreach (Aliases alias in vh.Alias)
                         {
+                            if (String.IsNullOrEmpty(alias.AliasFolder) || String.IsNullOrEmpty(alias.AliasName))
+                            {
+                                continue;
+                            }
                             af = alias.AliasFolder.Replace("\\", "/");
                             af += (af[af.Length - 1] != '/') ? "/" : "";
                             an = alias.AliasName.Replace("\\", "/");
@@ -145,7 +165,7 @@ namespace WDS
 
                             foreach (Directories dir in vh.Directory)
                             {
-                                if (dir.DirectoryName.ToLower().Equals(af.ToLower()))
+                                if (dir.DirectoryName.Replace("\\", "/").TrimEnd('/').Equals(af.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
                                 {
                                     // This is the same code...
                                     WriteFile.WriteLine(tab(tabn) + "disable_symlinks " + ((dir.SymLinks) ? "off" : "on") + ";");
@@ -174,12 +194,18 @@ namespace WDS
                             }
                         }
 
-                        DirPaths = DirPaths.ConvertAll(d => d.ToLower());
+                        DirPaths = DirPaths.ConvertAll(d => d.TrimEnd('/').ToLower());
                         foreach (Directories dir in vh.Directory) {
-                            dp = dir.DirectoryName.ToLower().Replace("\\", "/");
-                            if (!DirPaths.Contains(dir.DirectoryName.ToLower()) && dp != fullPath)
+                            if (String.IsNullOrEmpty(dir.DirectoryName))
                             {
-                                af = "/" + dp.Replace(fullPath, "");
+                                continue;
+                            }
+                            dp = dir.DirectoryName.Replace("\\", "/").TrimEnd('/');
+                            // Only folders inside the document root can be mapped to a URL.
+                            if (!DirPaths.Contains(dp.ToLower()) &&
+                                dp.StartsWith(fullPath + "/", StringComparison.OrdinalIgnoreCase))
+                            {
+                                af = dp.Substring(fullPath.Length) + "/";
                                 WriteFile.WriteLine(tab(tabn) + "location " + af + " {");
                                 tabn++;
                                 // ... As this one. Sorry. :(
@@ -198,7 +224,7 @@ namespace WDS
                         if (this.PHPcgi)
                         {
                             WriteFile.WriteLine();
-                            WriteFile.WriteLine(tab(tabn) + "location ~ .php$ {");
+                            WriteFile.WriteLine(tab(tabn) + "location ~ \\.php$ {");
                             tabn++;
                             WriteFile.WriteLine(tab(tabn) + "root " + fullPath + ";");
                             WriteFile.WriteLine(tab(tabn) + "fastcgi_pass 127.0.0.1:8866;");
@@ -218,12 +244,11 @@ namespace WDS
                 tabn--;
                 WriteFile.WriteLine(tab(tabn) + "}");
                 WriteFile.WriteLine("");
-
-                WriteFile.Close();
+                }
             }
             catch (Exception ex)
             {
-                Globals.Error.Show(ex.Message);
+                Globals.Error.Show("Unexpected error", ex);
             }
         }
 

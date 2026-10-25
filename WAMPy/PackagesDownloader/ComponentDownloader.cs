@@ -25,9 +25,90 @@ namespace WDS.Resources
         Dictionary<String, String> Added = new Dictionary<String, String>();
         List<String> Removed = new List<String>();
 
+        private Label CompatibilityInfo;
+
         public ComponentDownloader()
         {
             InitializeComponent();
+
+            // Under the list: can the highlighted version work with the selected ones?
+            this.checkList.Height -= 70;
+            this.CompatibilityInfo = new Label();
+            this.CompatibilityInfo.Location = new System.Drawing.Point(this.checkList.Left, this.checkList.Bottom + 4);
+            this.CompatibilityInfo.Size = new System.Drawing.Size(this.checkList.Width, 66);
+            this.CompatibilityInfo.Text = "Select a version to see if it works with the versions you use.";
+            this.CompatibilityInfo.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.groupComponents.Controls.Add(this.CompatibilityInfo);
+            this.checkList.SelectedIndexChanged += (s, e) => this.ShowCompatibility();
+        }
+
+        private void ShowCompatibility()
+        {
+            if (this.checkList.SelectedItem == null || this.comboComponent.SelectedIndex < 0 ||
+                this.comboComponent.SelectedIndex >= this.SvrList.Rows.Count)
+            {
+                return;
+            }
+
+            Product product = Compatibility.ProductFromListName(this.SvrList.Rows[this.comboComponent.SelectedIndex]["Name"].ToString());
+            String item = this.checkList.SelectedItem.ToString();
+            SoftwareComponent c = Directory.Exists(this.Target + item)
+                ? Compatibility.FromFolder(Compatibility.KindOf(product), this.Target + item)
+                : Compatibility.FromPackage(product, item);
+
+            List<String> lines = new List<String>();
+            bool bad = false, limited = false;
+
+            foreach (Issue i in Compatibility.CheckAlone(c))
+            {
+                if (i.Level == Severity.Info) continue;
+                lines.Add((i.Level == Severity.Error ? "✖ " : "⚠ ") + i.Text);
+                bad |= (i.Level == Severity.Error);
+                limited |= (i.Level == Severity.Warning);
+            }
+
+            SoftwareComponent web = Compatibility.Active(ComponentKind.WebServer);
+            SoftwareComponent php = Compatibility.Active(ComponentKind.PHP);
+            SoftwareComponent db = Compatibility.Active(ComponentKind.DataBase);
+            List<PairResult> pairs = new List<PairResult>();
+            switch (c.Kind)
+            {
+                case ComponentKind.WebServer:
+                    if (php != null) pairs.Add(Compatibility.WebPhp(c, php));
+                    break;
+                case ComponentKind.PHP:
+                    if (web != null) pairs.Add(Compatibility.WebPhp(web, c));
+                    if (db != null) pairs.Add(Compatibility.PhpDb(c, db));
+                    break;
+                case ComponentKind.DataBase:
+                    if (php != null) pairs.Add(Compatibility.PhpDb(php, c));
+                    break;
+            }
+
+            foreach (PairResult p in pairs)
+            {
+                SoftwareComponent other = (p.A == c) ? p.B : p.A;
+                if (!p.Compatible)
+                {
+                    bad = true;
+                    lines.Add("✖ Not with " + other.Title + ": " + p.Summary);
+                }
+                else
+                {
+                    bool lim = (p.Link == PhpLink.Cgi || p.Notes.Count > 0);
+                    limited |= lim;
+                    lines.Add((lim ? "⚠ " : "✔ ") + "With " + other.Title + (p.Link != PhpLink.None ? ": " + p.Method : "") + ".");
+                }
+            }
+
+            if (lines.Count == 0)
+            {
+                lines.Add("✔ No problems found. Select versions in the main window to compare them.");
+            }
+
+            this.CompatibilityInfo.Text = c.Details + "\r\n" + String.Join("\r\n", lines.ToArray());
+            this.CompatibilityInfo.ForeColor = bad ? System.Drawing.Color.Firebrick
+                : limited ? System.Drawing.Color.DarkOrange : System.Drawing.Color.ForestGreen;
         }
 
         private void ComponentDownloader_Load(object sender, EventArgs e)
@@ -53,7 +134,7 @@ namespace WDS.Resources
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    Globals.Error.Show("Unexpected error", ex);
                 }
             }
 
@@ -73,7 +154,16 @@ namespace WDS.Resources
                 }
             }
 
-            this.comboComponent.SelectedIndex = 0;
+            if (this.comboComponent.Items.Count > 0)
+            {
+                this.comboComponent.SelectedIndex = 0;
+            }
+            else
+            {
+                this.comboComponent.Enabled = false;
+                this.checkList.Enabled = false;
+                Globals.Error.Show("The list of servers is not available yet. Check your connection and try again later.");
+            }
         }
         /*
         public Boolean LoadServersDatabase()
@@ -98,9 +188,15 @@ namespace WDS.Resources
 
         public Boolean LoadServerList()
         {
+            if (Globals.dbServ == null)
+            {
+                this.SvrList = new DataTable();
+                return false;
+            }
+
             try
             {
-                this.SvrList = Globals.dbServ.GetDataTable("SELECT * FROM ServerNames WHERE Active = 1 AND Type = " + (Convert.ToInt32(this.SelTypes)+1));
+                this.SvrList = Globals.dbServ.GetDataTable("SELECT * FROM ServerNames WHERE Active = 1 AND Type = @p0", Convert.ToInt32(this.SelTypes) + 1);
                 return true;
             }
             catch (Exception)
@@ -113,6 +209,10 @@ namespace WDS.Resources
         private void comboComponent_SelectedIndexChanged(object sender, EventArgs e)
         {
             this.checkList.Items.Clear();
+            if (comboComponent.SelectedIndex < 0 || comboComponent.SelectedIndex >= this.SvrList.Rows.Count)
+            {
+                return;
+            }
             DataRow row = this.SvrList.Rows[comboComponent.SelectedIndex];
 
             LoadURLs(Convert.ToInt32(row["Id"]));
@@ -132,22 +232,12 @@ namespace WDS.Resources
                 foreach (DataRow row in this.SvrURLs.Rows)
                 {
                     Itm = CleanURL(row["URL"].ToString());
+                    if (String.IsNullOrEmpty(Itm))
+                    {
+                        continue;
+                    }
 
-                    if (Fldrs.Contains(Itm))
-                    {
-                        try
-                        {
-                            items.Add(Itm, true);
-                        }
-                        catch (NullReferenceException)
-                        {
-                            //Globals.Error.Show("Error:\r\n" + ex);
-                        }
-                    }
-                    else
-                    {
-                        items.Add(Itm);
-                    }
+                    items.Add(Itm, Fldrs.Contains(Itm));
                 }
             }
         }
@@ -167,7 +257,7 @@ namespace WDS.Resources
             }
             catch (Exception Ex)
             {
-                MessageBox.Show(Ex.Message);
+                Globals.Error.Show("Unexpected error", Ex);
                 return null;
             }
         }
@@ -175,9 +265,15 @@ namespace WDS.Resources
         public Boolean LoadServerFileList(int ServerId)
         {
             // Get server URLs from DataBase.
+            if (Globals.dbServ == null)
+            {
+                this.SvrURLs = new DataTable();
+                return false;
+            }
+
             try
             {
-                this.SvrURLs = Globals.dbServ.GetDataTable("SELECT * FROM ServerURLs WHERE ServerId = " + ServerId);
+                this.SvrURLs = Globals.dbServ.GetDataTable("SELECT * FROM ServerURLs WHERE ServerId = @p0", ServerId);
                 return true;
             }
             catch (Exception)
@@ -197,9 +293,14 @@ namespace WDS.Resources
             // Get installed servers.
             List<String> Fldrs = new List<String>();
 
+            if (!Directory.Exists(trgt))
+            {
+                return Fldrs;
+            }
+
             foreach (String Dir in Directory.GetDirectories(trgt))
             {
-                Fldrs.Add(Dir.Replace(trgt, ""));
+                Fldrs.Add(Path.GetFileName(Dir));
             }
             return Fldrs;
         }
@@ -212,6 +313,11 @@ namespace WDS.Resources
             {
                 if (Directory.Exists(this.Target + Item))
                 {
+                    if (Globals.Processes.RunningCount > 0 && IsActiveVersion(Item))
+                    {
+                        Globals.Error.Show(Item + " is running. Stop the servers before removing it.");
+                        continue;
+                    }
                     this.Empty(new DirectoryInfo(this.Target + Item));
                 }
             }
@@ -230,7 +336,7 @@ namespace WDS.Resources
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    Globals.Error.Show("Unexpected error", ex);
                 }
             }
         }
@@ -246,7 +352,7 @@ namespace WDS.Resources
                 String SelectedURL = null;
                 foreach (DataRow row in this.SvrURLs.Rows)
                 {
-                    if (row["URL"].ToString().Contains(Item))
+                    if (CleanURL(row["URL"].ToString()) == Item)
                     {
                         SelectedURL = row["URL"].ToString();
                         break;
@@ -277,17 +383,25 @@ namespace WDS.Resources
             }
         }
 
+        private bool IsActiveVersion(String Item)
+        {
+            switch (this.SelTypes)
+            {
+                case ComponentType.WebServer: return Item == Globals.ActiveWebServerVersion;
+                case ComponentType.PHP: return Item == Globals.ActivePHPVersion;
+                default: return Item == Globals.ActiveMySQLVersion;
+            }
+        }
+
         private void Empty(DirectoryInfo directory)
         {
             try
             {
-                foreach (FileInfo file in directory.GetFiles()) file.Delete();
-                foreach (DirectoryInfo subDirectory in directory.GetDirectories()) subDirectory.Delete(true);
                 directory.Delete(true);
             }
             catch(Exception e)
             {
-                MessageBox.Show(e.Message);
+                Globals.Error.Show("Unexpected error", e);
             }
         }
     }
