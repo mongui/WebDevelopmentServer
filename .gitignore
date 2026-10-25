@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+WAMPy/publicar/
+
+# Visual Studio user files
+*.suo
+*.user
+
+# Signing certificates: never commit them
+*.pfx
